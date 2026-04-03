@@ -196,6 +196,11 @@ input.error,select.error{border-color:var(--warn)!important}
         <button class="vbtn" id="v-gece"  onclick="setVardiya('GECE')"><span class="vi">🌙</span>Gece<span class="vt">01:00–09:00</span></button>
       </div>
       <div class="err-msg" id="err-vardiya">Lütfen vardiya seçin</div>
+      <div class="field" style="margin-top:10px;text-align:center;">
+        <button id="manuel-vardiya-btn" class="btn" type="button" onclick="toggleManuelVardiya()" style="padding:10px;font-size:14px;max-width:220px;">
+          Manuel Vardiya: Kapalı
+        </button>
+      </div>
     </div>
     <div class="row2">
       <div class="field">
@@ -478,7 +483,8 @@ const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx4zZ4-4QYMWGQ4z__Jh
 var vardiya = null, currentStep = 1, olcumNo = 1, enjSayisi = 1;
 var enj1Kilitli = false, enj2Kilitli = false;
 var kullanicilar = {}, uretimLimiti = 0, _adSoyad = '';
-var maxFireLimit = 50; // Google Sheets'ten güncellenecek varsayılan değer
+var manuelVardiyaAcik = false; // Manuel vardiya kontrolü
+var maxFireLimit = 200; // Google Sheets'ten güncellenecek varsayılan değer (bağlantı kopsa 200)
 var _timeOffset = 0, _t0 = 0;
 var _fireAdjTimer = null, _fireAdjInterval = null;
 var _pendingFire = null; // Anlık fire kaydı için geçici nesne
@@ -644,7 +650,7 @@ async function loadLists() {
       }
       kullanicilar = json.kullanicilar || {};
       uretimLimiti = parseInt(json.uretimLimiti) || 0;
-      maxFireLimit = parseInt(json.maxFireLimit) || 50; // Excel F2'den Çekilir
+      maxFireLimit = parseInt(json.maxFireLimit) || 200; // Excel F2'den Çekilir (default 200)
       
       const idEl = document.getElementById('kullanici_id');
       if(idEl) idEl.dataset.ready = '1';
@@ -791,11 +797,23 @@ const _VR = {
 };
 
 function isVardiyaActive(v) {
-  if(window.__testMode) return true; 
+  if(window.__testMode || manuelVardiyaAcik) return true;
   const now = new Date(Date.now() + _timeOffset);
   const m = now.getHours() * 60 + now.getMinutes();
   const r = _VR[v];
   return r.e < r.s ? (m >= r.s || m <= r.e) : (m >= r.s && m <= r.e);
+}
+
+function toggleManuelVardiya() {
+  manuelVardiyaAcik = !manuelVardiyaAcik;
+  const btn = document.getElementById('manuel-vardiya-btn');
+  if(btn) {
+    btn.textContent = manuelVardiyaAcik ? 'Manuel Vardiya: Açık' : 'Manuel Vardiya: Kapalı';
+    btn.style.borderColor = manuelVardiyaAcik ? 'var(--success)' : 'var(--border)';
+    btn.style.color = manuelVardiyaAcik ? 'var(--success)' : 'var(--text2)';
+    btn.style.background = manuelVardiyaAcik ? 'var(--success-light)' : 'var(--bg)';
+  }
+  updateVardiyaButtons();
 }
 
 function updateVardiyaButtons() {
