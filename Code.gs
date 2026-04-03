@@ -29,7 +29,7 @@ function doGet(e) {
     });
 
     const uretimLimiti = Number(ayarlar.getRange('D2').getValue()) || 0;
-    const maxFireLimit = Number(ayarlar.getRange('F2').getValue()) || 50;
+    const maxFireLimit = Number(ayarlar.getRange('F2').getValue()) || 200;
 
     return jsonp(cb, {
       kasaEbatlari: kasaCol,
