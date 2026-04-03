@@ -220,9 +220,33 @@ function doGet(e) {
 
     // Canlı İzleme güncelle (sütun-bazlı, max 5 log, vardiya bazlı sıfırlama)
     const adSoyad = e.parameter.adsoyad || '';
-    updateCanliIzleme(e.parameter.enj1_no, e.parameter.kasa1, e.parameter.cevrim1, e.parameter.agirlik1, e.parameter.sayac_bas1 + '→' + e.parameter.sayac_bit1, e.parameter.uretim1, e.parameter.fire1, vardiyaTarih, vardiya, adSoyad);
+    updateCanliIzleme(
+      e.parameter.enj1_no,
+      e.parameter.kasa1,
+      e.parameter.cevrim1,
+      e.parameter.agirlik1,
+      e.parameter.sayac_bas1 || '',
+      e.parameter.sayac_bit1 || '',
+      e.parameter.uretim1,
+      e.parameter.fire1,
+      vardiyaTarih,
+      vardiya,
+      adSoyad
+    );
     if (enjSayisi === 2) {
-      updateCanliIzleme(e.parameter.enj2_no, e.parameter.kasa2, e.parameter.cevrim2, e.parameter.agirlik2, e.parameter.sayac_bas2 + '→' + e.parameter.sayac_bit2, e.parameter.uretim2, e.parameter.fire2, vardiyaTarih, vardiya, adSoyad);
+      updateCanliIzleme(
+        e.parameter.enj2_no,
+        e.parameter.kasa2,
+        e.parameter.cevrim2,
+        e.parameter.agirlik2,
+        e.parameter.sayac_bas2 || '',
+        e.parameter.sayac_bit2 || '',
+        e.parameter.uretim2,
+        e.parameter.fire2,
+        vardiyaTarih,
+        vardiya,
+        adSoyad
+      );
     }
 
     return jsonp(cb, { result: 'ok', olcum: olcumNo });
@@ -298,7 +322,7 @@ var _VARDIYA_BASE = { 'SABAH': 3, 'AKSAM': 16, 'GECE': 29 };
 var _VARDIYA_BG   = { 'SABAH': '#fef9c3', 'AKSAM': '#dbeafe', 'GECE': '#f3e8ff' };
 var _BOLUM_BG     = { 'SABAH': '#f59e0b', 'AKSAM': '#3b82f6', 'GECE': '#7c3aed' };
 
-function updateCanliIzleme(enjNo, kasa, cevrim, agirlik, sayac, uretim, fire, tarih, vardiya, adSoyad) {
+function updateCanliIzleme(enjNo, kasa, cevrim, agirlik, sayacBas, sayacBit, uretim, fire, tarih, vardiya, adSoyad) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName('Canlı İzleme');
   if (!sheet) return;
@@ -323,15 +347,15 @@ function updateCanliIzleme(enjNo, kasa, cevrim, agirlik, sayac, uretim, fire, ta
   // Mevcut satırı oku — aynı tarihse Üretim+Fire biriktirilir
   // getDisplayValues kullanılır: Sheets '2026-03-31' stringini Date'e çevirir,
   // getValues() ile Date objesi gelir ve string karşılaştırması başarısız olur.
-  const existing = sheet.getRange(targetRow, 1, 1, 9).getDisplayValues()[0];
+  const existing = sheet.getRange(targetRow, 1, 1, 11).getDisplayValues()[0];
   const mevcutTarih  = String(existing[2] || '').trim();
-  const mevcutUretim = parseInt(existing[6]) || 0;
-  const mevcutFire   = parseInt(existing[7]) || 0;
+  const mevcutUretim = parseInt(existing[8]) || 0;
+  const mevcutFire   = parseInt(existing[9]) || 0;
 
   const yeniUretim = (mevcutTarih === tarih) ? (mevcutUretim + (parseInt(uretim) || 0)) : (parseInt(uretim) || 0);
   const yeniFire   = (mevcutTarih === tarih) ? (mevcutFire   + (parseInt(fire)   || 0)) : (parseInt(fire)   || 0);
 
-  const range = sheet.getRange(targetRow, 1, 1, 9);
+  const range = sheet.getRange(targetRow, 1, 1, 11);
   range.setValues([[
     'Enjeksiyon ' + enjIdx,
     adSoyad || '',
@@ -339,6 +363,8 @@ function updateCanliIzleme(enjNo, kasa, cevrim, agirlik, sayac, uretim, fire, ta
     kasa    || '',
     cevrim  || '',
     agirlik || '',
+    sayacBas || '',
+    sayacBit || '',
     yeniUretim,
     yeniFire,
     saat
@@ -359,7 +385,7 @@ function _setupCanlıBaslik(sheet) {
   const COLS = 9;
 
   // Sütun başlıkları (Satır 1)
-  const headers = ['Makine', 'Ad Soyad', 'Tarih', 'Kasa', 'Çevrim(sn)', 'Ağırlık(gr)', 'Üretim', 'Fire', 'Saat'];
+  const headers = ['Makine', 'Ad Soyad', 'Tarih', 'Kasa', 'Çevrim(sn)', 'Ağırlık(gr)', 'Sayaç Baş', 'Sayaç Bit', 'Üretim', 'Fire', 'Saat'];
   const hRange = sheet.getRange(1, 1, 1, COLS);
   hRange.setValues([headers]);
   hRange.setFontWeight('bold').setBackground('#1e3a8a').setFontColor('#ffffff')
@@ -400,9 +426,11 @@ function _setupCanlıBaslik(sheet) {
   sheet.setColumnWidth(4, 100);  // Kasa
   sheet.setColumnWidth(5, 90);   // Çevrim(sn)
   sheet.setColumnWidth(6, 90);   // Ağırlık(gr)
-  sheet.setColumnWidth(7, 80);   // Üretim
-  sheet.setColumnWidth(8, 70);   // Fire
-  sheet.setColumnWidth(9, 70);   // Saat
+  sheet.setColumnWidth(7, 90);   // Sayaç Baş
+  sheet.setColumnWidth(8, 90);   // Sayaç Bit
+  sheet.setColumnWidth(9, 80);   // Üretim
+  sheet.setColumnWidth(10, 70);  // Fire
+  sheet.setColumnWidth(11, 70);  // Saat
 }
 
 function jsonp(callback, obj) {
