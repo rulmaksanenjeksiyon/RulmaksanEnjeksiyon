@@ -797,11 +797,7 @@ const _VR = {
 };
 
 function isVardiyaActive(v) {
-  if(window.__testMode || manuelVardiyaAcik) return true;
-  const now = new Date(Date.now() + _timeOffset);
-  const m = now.getHours() * 60 + now.getMinutes();
-  const r = _VR[v];
-  return r.e < r.s ? (m >= r.s || m <= r.e) : (m >= r.s && m <= r.e);
+  return true; // Otomatik saat kontrolü geçici olarak iptal edildi
 }
 
 function toggleManuelVardiya() {
