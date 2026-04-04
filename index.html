@@ -482,6 +482,7 @@ input.error,select.error{border-color:var(--warn)!important}
 <script>
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx4zZ4-4QYMWGQ4z__JhZspZF1GGXbEJDk5rpFQeqqXelOdY4fS1RkYL8J-Ce7XU4iP8g/exec';
 
+// DEĞİŞKENLER VE TX ID
 var vardiya = null, currentStep = 1, olcumNo = 1, enjSayisi = 1;
 var enj1Kilitli = false, enj2Kilitli = false;
 var kullanicilar = {}, uretimLimiti = 0, _adSoyad = '';
@@ -490,6 +491,7 @@ var maxFireLimit = 200;
 var _timeOffset = 0, _t0 = 0;
 var _fireAdjTimer = null, _fireAdjInterval = null;
 var _pendingFire = null; 
+var currentTxId = null; 
 
 function formatCevrim(el) {
   let val = el.value.replace(/,/g, '.').replace(/[^0-9.]/g, '');
@@ -626,7 +628,6 @@ function restoreDraft() {
     if(d.tarih) document.getElementById('tarih').value = d.tarih;
     setEnjSayisi(d.enjSayisi || 1);
     
-    // YENİ: Sayaçları Güvenli Şekilde Geri Yükleme
     ['enj1_no','kasa1','enj2_no','kasa2','cevrim1','agirlik1','sayac_bit1','cevrim2','agirlik2','sayac_bit2'].forEach(id=>{ 
       const el=document.getElementById(id); if(el&&d[id]!==undefined) el.value=d[id]; 
     });
@@ -639,7 +640,6 @@ function restoreDraft() {
         });
         loadAccumulatedFire(n, val);
 
-        // YENİ: Draft yüklendiğinde Başlangıç sayacını teyit et
         const draftedBas = d['sayac_bas'+n];
         const cb = 'cbLCRestore'+n+'_'+Date.now();
         window[cb] = function(json) {
@@ -1162,7 +1162,6 @@ async function executeInstantFire(n, amount, enjNo) {
   document.head.appendChild(s);
 }
 
-// YENİ: Bekleyen (Butona Basılmamış) Fireleri Arka Planda Sessizce Gönderen Süpürücü Fonksiyon
 function flushPendingFires() {
   [1, 2].forEach(n => {
     if (enjSayisi === 1 && n === 2) return;
@@ -1350,7 +1349,6 @@ function validate2() {
     formatAgirlik(document.getElementById('agirlik2'), 2);
   }
 
-  // YENİ EKLENDİ: İleri Butonuna Basıldığında Unutulan Fireleri Otomatik Süpürür ve Kaydeder
   flushPendingFires();
 
   function chk(id,errId) {
@@ -1525,24 +1523,28 @@ async function submitForm(onaylandi) {
   const ob=document.getElementById('onay-btn');
   document.getElementById('load-text').textContent = 'Kaydediliyor...';
   document.getElementById('loading').classList.add('show');
+  
   if(sb) sb.disabled=true;
   if(ob) ob.disabled=true;
 
   const data = getData();
   data.onaylandi = onaylandi;
 
+  if (!currentTxId) {
+    currentTxId = 'TX_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
+  }
+
   return new Promise(function(resolve) {
     var cb = 'cbSubmit_' + Date.now();
-    var startTime = Date.now();
 
     var timerOut = setTimeout(function() {
       delete window[cb];
       document.getElementById('loading').classList.remove('show');
-      showToast('✅ Kayıt tabloya ulaştı (Ağ gecikmesi atlandı).','ok');
-      if (olcumNo === 3 && onaylandi) clearFireLogs();
-      setTimeout(resetForm, 2200);
+      if(sb) sb.disabled=false;
+      if(ob) ob.disabled=false;
+      showToast('⚠️ İnternet yavaş veya koptu! Lütfen GÖNDER\'e tekrar basın.','err');
       resolve();
-    }, 14000);
+    }, 15000);
 
     window[cb] = function(json) {
       clearTimeout(timerOut);
@@ -1551,19 +1553,21 @@ async function submitForm(onaylandi) {
       if(s) s.remove();
 
       if(json && json.result === 'ok') {
-        if (olcumNo === 3 && onaylandi) {
-          clearFireLogs();
-        }
+        if (olcumNo === 3 && onaylandi) clearFireLogs();
+        currentTxId = null; 
         clearDraft();
         document.getElementById('loading').classList.remove('show');
         const msgs={1:'✅ Ölçümünüz kaydedildi! İyi Günler',2:'✅ 2. ölçüm kaydedildi!',3:'✅ Vardiya tamamlandı!'};
-        showToast(msgs[olcumNo]||'✅ Kaydedildi!','ok');
+        
+        if(json.duplicate) showToast('✅ Arka planda zaten kaydedilmiş, form sıfırlanıyor.', 'ok');
+        else showToast(msgs[olcumNo]||'✅ Kaydedildi!','ok');
+        
         setTimeout(resetForm, 2200);
       } else {
         document.getElementById('loading').classList.remove('show');
         if(sb) sb.disabled=false;
         if(ob) ob.disabled=false;
-        showToast('❌ Kayıt hatası, tekrar dene','err');
+        showToast('❌ Kayıt hatası! Lütfen GÖNDER\'e tekrar basın.','err');
       }
       resolve();
     };
@@ -1571,6 +1575,7 @@ async function submitForm(onaylandi) {
     var params = new URLSearchParams({
       action:      'submitForm',
       callback:    cb,
+      tx_id:       currentTxId,
       adsoyad:     data.adsoyad     || '',
       vardiya:     data.vardiya     || '',
       olcumNo:     data.olcumNo     || 1,
@@ -1603,16 +1608,9 @@ async function submitForm(onaylandi) {
       clearTimeout(timerOut);
       delete window[cb];
       document.getElementById('loading').classList.remove('show');
-      
-      if (Date.now() - startTime > 1500) {
-         showToast('✅ Kayıt başarıyla işlendi (Safari onayı gizledi)', 'ok');
-         if (olcumNo === 3 && onaylandi) clearFireLogs();
-         setTimeout(resetForm, 2200);
-      } else {
-         showToast('❌ İnternet bağlantınız koptu!', 'err');
-         if(sb) sb.disabled=false;
-         if(ob) ob.disabled=false;
-      }
+      if(sb) sb.disabled=false;
+      if(ob) ob.disabled=false;
+      showToast('❌ Bağlantı koptu! Lütfen GÖNDER\'e tekrar basın.', 'err');
       resolve();
     };
     
@@ -1622,6 +1620,7 @@ async function submitForm(onaylandi) {
 
 function resetForm() {
   clearDraft();
+  currentTxId = null;
   vardiya=null; currentStep=1; olcumNo=1; enjSayisi=1; enj1Kilitli=false; enj2Kilitli=false;
   const hatirla = document.getElementById('hatirla');
   const sifreEl = document.getElementById('sifre');
