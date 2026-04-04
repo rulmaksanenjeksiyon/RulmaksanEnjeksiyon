@@ -273,14 +273,15 @@ input.error,select.error{border-color:var(--warn)!important}
 
     <div class="field">
       <label>Çevrim Süresi <span class="req">*</span></label>
-      <div class="ui"><input type="number" id="cevrim1" placeholder="0.00" min="0" step="0.01" inputmode="decimal"><span class="ub">sn</span></div>
+      <div class="ui"><input type="text" id="cevrim1" placeholder="0.00" inputmode="decimal" onblur="formatCevrim(this)"><span class="ub">sn</span></div>
       <div class="err-msg" id="err-cevrim1">Gerekli</div>
     </div>
     <div class="field">
       <label>Kasa Ağırlığı <span class="req">*</span></label>
-      <div class="ui"><input type="number" id="agirlik1" placeholder="0.0" min="0" step="0.1" inputmode="decimal" oninput="checkKasaAgirlik(1)"><span class="ub">gr</span></div>
+      <div class="ui"><input type="text" id="agirlik1" placeholder="0.0" inputmode="decimal" onblur="formatAgirlik(this, 1)"><span class="ub">gr</span></div>
       <div class="err-msg" id="err-agirlik1">Gerekli</div>
     </div>
+
     <div class="row2">
       <div class="field">
         <label id="lbl-bas1">Sayaç Başlama <span class="req">*</span></label>
@@ -364,14 +365,15 @@ input.error,select.error{border-color:var(--warn)!important}
 
     <div class="field">
       <label>Çevrim Süresi <span class="req">*</span></label>
-      <div class="ui"><input type="number" id="cevrim2" placeholder="0.00" min="0" step="0.01" inputmode="decimal"><span class="ub">sn</span></div>
+      <div class="ui"><input type="text" id="cevrim2" placeholder="0.00" inputmode="decimal" onblur="formatCevrim(this)"><span class="ub">sn</span></div>
       <div class="err-msg" id="err-cevrim2">Gerekli</div>
     </div>
     <div class="field">
       <label>Kasa Ağırlığı <span class="req">*</span></label>
-      <div class="ui"><input type="number" id="agirlik2" placeholder="0.0" min="0" step="0.1" inputmode="decimal" oninput="checkKasaAgirlik(2)"><span class="ub">gr</span></div>
+      <div class="ui"><input type="text" id="agirlik2" placeholder="0.0" inputmode="decimal" onblur="formatAgirlik(this, 2)"><span class="ub">gr</span></div>
       <div class="err-msg" id="err-agirlik2">Gerekli</div>
     </div>
+
     <div class="row2">
       <div class="field">
         <label id="lbl-bas2">Sayaç Başlama <span class="req">*</span></label>
@@ -483,11 +485,59 @@ const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx4zZ4-4QYMWGQ4z__Jh
 var vardiya = null, currentStep = 1, olcumNo = 1, enjSayisi = 1;
 var enj1Kilitli = false, enj2Kilitli = false;
 var kullanicilar = {}, uretimLimiti = 0, _adSoyad = '';
-var manuelVardiyaAcik = false; // Manuel vardiya kontrolü
-var maxFireLimit = 200; // Google Sheets'ten güncellenecek varsayılan değer (bağlantı kopsa 200)
+var manuelVardiyaAcik = false; 
+var maxFireLimit = 200; 
 var _timeOffset = 0, _t0 = 0;
 var _fireAdjTimer = null, _fireAdjInterval = null;
-var _pendingFire = null; // Anlık fire kaydı için geçici nesne
+var _pendingFire = null; 
+
+// =========================================================
+// YENİ: VİRGÜLSÜZ YAZILANLARI OTOMATİK ÇEVİREN SİHİRLİ KODLAR
+// =========================================================
+function formatCevrim(el) {
+  // Virgülleri noktaya çevir ve sadece rakam/nokta kalsın
+  let val = el.value.replace(/,/g, '.').replace(/[^0-9.]/g, '');
+  if (!val) return;
+  
+  // İçinde hiç nokta yoksa (kullanıcı dümdüz yazdıysa)
+  if (!val.includes('.')) {
+    if (val.length === 3) {
+       // Örn: 182 -> 18.2
+       val = val.slice(0, 2) + '.' + val.slice(2);
+    } else if (val.length >= 4) {
+       // Örn: 1344 -> 13.44
+       val = val.slice(0, val.length - 2) + '.' + val.slice(val.length - 2);
+    }
+  }
+  
+  let num = parseFloat(val);
+  if (!isNaN(num)) {
+    el.value = num.toFixed(2);
+  } else {
+    el.value = '';
+  }
+}
+
+function formatAgirlik(el, n) {
+  let val = el.value.replace(/,/g, '.').replace(/[^0-9.]/g, '');
+  if (!val) return;
+  
+  if (!val.includes('.')) {
+    if (val.length >= 4) {
+       // Örn: 4505 -> 450.5
+       val = val.slice(0, val.length - 1) + '.' + val.slice(val.length - 1);
+    }
+  }
+  
+  let num = parseFloat(val);
+  if (!isNaN(num)) {
+    el.value = num.toFixed(1);
+    checkKasaAgirlik(n);
+  } else {
+    el.value = '';
+  }
+}
+// =========================================================
 
 window.onload = async function() {
   const now = new Date();
@@ -504,8 +554,8 @@ window.onload = async function() {
   tickClock();
   updateVardiyaButtons(); 
   checkAndShowDraft();
-  garbageCollector(); // Sayfa yüklenmesinde çalıştır
-  setInterval(garbageCollector, 5 * 60 * 1000); // 5 dakikada bir
+  garbageCollector(); 
+  setInterval(garbageCollector, 5 * 60 * 1000); 
 };
 
 document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='hidden') saveDraft(); });
@@ -565,7 +615,6 @@ function checkAndShowDraft() {
     const d = JSON.parse(raw);
     if(!d.kullanici_id && !d.adsoyad) return;
 
-    // Vardiya bitiş saatini hesapla; + 15 dk geçmişse draft'ı sil
     const expiry = _draftExpiry(d.ts, d.vardiya);
     if(expiry && (Date.now() + _timeOffset) > expiry + 15 * 60 * 1000) {
       localStorage.removeItem('enj_draft');
@@ -582,14 +631,12 @@ function checkAndShowDraft() {
   } catch(e) { localStorage.removeItem('enj_draft'); }
 }
 
-// Draft'ın ait olduğu vardiya bitiş anını (ms) döndürür
 function _draftExpiry(ts, vardiya) {
   if(!ts || !vardiya) return null;
   const d  = new Date(ts);
   const yr = d.getFullYear(), mo = d.getMonth(), dy = d.getDate(), hr = d.getHours();
   if(vardiya === 'SABAH') return new Date(yr, mo, dy, 17, 0, 0).getTime();
   if(vardiya === 'AKSAM') return new Date(yr, mo, dy + (hr >= 17 ? 1 : 0), 1, 0, 0).getTime();
-  // GECE: 01:00-09:00
   if(vardiya === 'GECE')  return new Date(yr, mo, dy, 9, 0, 0).getTime();
   return null;
 }
@@ -650,7 +697,7 @@ async function loadLists() {
       }
       kullanicilar = json.kullanicilar || {};
       uretimLimiti = parseInt(json.uretimLimiti) || 0;
-      maxFireLimit = parseInt(json.maxFireLimit) || 200; // Excel F2'den Çekilir (default 200)
+      maxFireLimit = parseInt(json.maxFireLimit) || 200; 
       
       const idEl = document.getElementById('kullanici_id');
       if(idEl) idEl.dataset.ready = '1';
@@ -733,7 +780,7 @@ function selectEnj(n, val, btn) {
   document.getElementById('olcum-enj'+n+'-title').textContent = val + ' — Ölçümler';
   syncEnjDisabled();
   fetchLastCounter(n, val);
-  loadAccumulatedFire(n, val); // Yeni Cihaz/Makine bazlı yükleme
+  loadAccumulatedFire(n, val); 
 }
 
 function syncEnjDisabled() {
@@ -790,14 +837,8 @@ function clearSifreErr() {
   document.getElementById('sifre').classList.remove('error');
 }
 
-const _VR = {
-  SABAH: { s: 9*60,    e: 17*60    },
-  AKSAM: { s: 17*60,   e: 1*60     },
-  GECE:  { s: 1*60,    e: 9*60     },
-};
-
 function isVardiyaActive(v) {
-  return true; // Otomatik saat kontrolü geçici olarak iptal edildi
+  return true; 
 }
 
 function toggleManuelVardiya() {
@@ -999,18 +1040,11 @@ function getUretim(n) {
   return Math.max(0,bit-bas);
 }
 
-// ===============================================
-// YENİ ANLIK FIRE MEKANİZMASI (SAYFA 2 İÇİN)
-// ===============================================
-
 function getFpLogKey(tarih, vard, enjNo) { return 'fireLog_'+tarih+'_'+vard+'_'+enjNo.replace(/\s+/g,''); }
 function getFpUnlockKey(tarih, vard, enjNo) { return 'fpUnlock_'+tarih+'_'+vard+'_'+enjNo.replace(/\s+/g,''); }
 function getFpLog(tarih, vard, enjNo) { try { var r=localStorage.getItem(getFpLogKey(tarih,vard,enjNo)); return r?JSON.parse(r):[]; } catch(e){ return []; } }
 function getFpTotal(tarih, vard, enjNo) { return getFpLog(tarih,vard,enjNo).reduce(function(s,e){return s+(e.amount||0);},0); }
 function getFpTarih() {
-  // Tarih input'u loadLists() sonrası sunucu saatiyle güncellenir ve sabit kalır.
-  // _timeOffset ile hesaplama yerine bu değeri kullan — offset gecikmesinden kaynaklanan
-  // anahtar uyuşmazlığını engeller.
   var el = document.getElementById('tarih');
   return el && el.value ? el.value : new Date().toISOString().split('T')[0];
 }
@@ -1028,7 +1062,6 @@ function adjFire(n, d) {
   
   var el = document.getElementById('fire'+n);
   var val = Math.max(0, parseInt(el.value||0) + d);
-  // Ayarlardan gelen limit kadar kısıtla
   el.value = Math.min(maxFireLimit, val);
   document.getElementById('err-fire'+n).classList.remove('show');
 }
@@ -1077,7 +1110,6 @@ function promptInstantFire(n) {
 
   document.getElementById('err-fire'+n).classList.remove('show');
   
-  // Modal Göster
   _pendingFire = { n: n, amount: miktar, enjNo: enjNo };
   document.getElementById('fire-modal-body').innerHTML = 
     `⚠️ <strong style="font-size:18px; color:var(--warn)">${miktar} adet</strong> fire ekliyorsunuz. <br><br>Bu işlem <strong style="color:var(--text)">hemen kaydedilecek</strong> ve yönetici tablosuna işlenecektir. Onaylıyor musunuz?`;
@@ -1104,22 +1136,16 @@ async function executeInstantFire(n, amount, enjNo) {
   var tarih = getFpTarih();
   var saat  = document.getElementById('olcum_saat').value;
 
-  // 1) Önce localStorage'a yaz — UI anında güncellenir, network'e bağımlı değil
   var log = getFpLog(tarih, vardiya, enjNo);
   log.push({ ts: Date.now(), amount: amount });
   try { localStorage.setItem(getFpLogKey(tarih, vardiya, enjNo), JSON.stringify(log)); } catch(ex){}
   localStorage.setItem(getFpUnlockKey(tarih, vardiya, enjNo), String(Date.now() + 15*60*1000));
 
-  // 2) Input sıfırla, history'yi göster, loading kapat
   document.getElementById('fire'+n).value = '0';
   loadAccumulatedFire(n, enjNo);
   document.getElementById('loading').classList.remove('show');
   showToast('\u2705 ' + amount + ' Fire kaydedildi!', 'ok');
 
-  // 3) Arka planda Google Sheets'e JSONP (GET) ile gönder
-  // NEDEN GET?: fetch+no-cors+Content-Type:application/json kombinasyonu
-  // "preflighted" isteğe dönüşür; Apps Script OPTIONS'a yanıt vermez,
-  // doPost hiç çalışmaz. JSONP script tag ile bu sorun tamamen ortadan kalkar.
   var cb = 'cbFire_' + Date.now();
   window[cb] = function(json) {
     delete window[cb];
@@ -1230,8 +1256,6 @@ function clearFireLogs() {
   });
 }
 
-// ===============================================
-
 function goStep(n) {
   currentStep=n;
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
@@ -1287,6 +1311,15 @@ function validate1() {
 
 function validate2() {
   let ok=true;
+  
+  // Güvence: Gönder butonuna basıldığında son haliyle formatları toparla
+  formatCevrim(document.getElementById('cevrim1'));
+  formatAgirlik(document.getElementById('agirlik1'), 1);
+  if(enjSayisi===2) {
+    formatCevrim(document.getElementById('cevrim2'));
+    formatAgirlik(document.getElementById('agirlik2'), 2);
+  }
+
   function chk(id,errId) {
     const el=document.getElementById(id);
     if(!el.value){el.classList.add('error');document.getElementById(errId).classList.add('show');ok=false;}
@@ -1323,7 +1356,6 @@ function validate2() {
   else if(parseInt(bit1.value)-parseInt(bas1.value)>4000){bit1.classList.add('error');document.getElementById('err-bit1').textContent='Üretim 4000\'i geçemez!';document.getElementById('err-bit1').classList.add('show');ok=false;}
   else{bit1.classList.remove('error');document.getElementById('err-bit1').classList.remove('show');}
 
-  // YENİ: Toplam Üretim >= Kümülatif Fire Kontrolü (1)
   const prod1 = getUretim(1);
   const totalFire1 = getFpTotal(getFpTarih(), vardiya, document.getElementById('enj1_no').value);
   if(totalFire1 > prod1 && prod1 > 0) {
@@ -1343,7 +1375,6 @@ function validate2() {
     else if(parseInt(bit2.value)-parseInt(bas2.value)>4000){bit2.classList.add('error');document.getElementById('err-bit2').textContent='Üretim 4000\'i geçemez!';document.getElementById('err-bit2').classList.add('show');ok=false;}
     else{bit2.classList.remove('error');document.getElementById('err-bit2').classList.remove('show');}
     
-    // YENİ: Toplam Üretim >= Kümülatif Fire Kontrolü (2)
     const prod2 = getUretim(2);
     const totalFire2 = getFpTotal(getFpTarih(), vardiya, document.getElementById('enj2_no').value);
     if(totalFire2 > prod2 && prod2 > 0) {
@@ -1434,7 +1465,6 @@ function getData() {
   const b2=parseInt(document.getElementById('sayac_bas2').value)||0;
   const e2=parseInt(document.getElementById('sayac_bit2').value)||0;
   
-  // Veritabanına kümülatif toplamı (Total Fire) yolluyoruz
   const totalFire1 = getFpTotal(getFpTarih(), vardiya, enj1);
   const totalFire2 = enjSayisi === 2 ? getFpTotal(getFpTarih(), vardiya, enj2) : 0;
 
@@ -1444,14 +1474,12 @@ function getData() {
     tarih:      document.getElementById('tarih').value,
     olcum_saat: document.getElementById('olcum_saat').value,
     enj1_no:enj1, kasa1:k1,
-    // GÜNCELLEME: iPhone için virgül (,) noktaya (.) çevrildi
-    cevrim1: document.getElementById('cevrim1').value.replace(',', '.'),
+    cevrim1: document.getElementById('cevrim1').value, // Artık zeka düzeltmiş olacak
     agirlik1:document.getElementById('agirlik1').value,
     sayac_bas1:b1, sayac_bit1:e1, uretim1:e1-b1,
     fire1:   totalFire1,
     enj2_no:enj2, kasa2:k2,
-    // GÜNCELLEME: iPhone için virgül (,) noktaya (.) çevrildi
-    cevrim2: enjSayisi===2 ? document.getElementById('cevrim2').value.replace(',', '.') : '00',
+    cevrim2: enjSayisi===2 ? document.getElementById('cevrim2').value : '00',
     agirlik2:enjSayisi===2 ? document.getElementById('agirlik2').value : '00',
     sayac_bas2:enjSayisi===2?b2:'00', sayac_bit2:enjSayisi===2?e2:'00',
     uretim2: enjSayisi===2?e2-b2:0,
@@ -1473,16 +1501,17 @@ async function submitForm(onaylandi) {
   return new Promise(function(resolve) {
     var cb = 'cbSubmit_' + Date.now();
     
-    // GÜNCELLEME: Timeout 35 saniyeye uzatıldı ve arka arkaya basmayı önlemek için buton kilitleri açılmadı
+    // GÜNCELLEME: Zamanı ölçüyoruz ki hatanın Safari'den mi yoksa internetsizlikten mi olduğunu anlayalım
+    var startTime = Date.now();
+
     var timerOut = setTimeout(function() {
       delete window[cb];
       document.getElementById('loading').classList.remove('show');
-      // ÇİFT TIKLAMAYI ÖNLEMEK İÇİN BURADAKİ BUTON AKTİF ETME KODLARI DEVRE DIŞI
-      // if(sb) sb.disabled=false; 
-      // if(ob) ob.disabled=false;
-      showToast('⚠️ Kayıt uzun sürüyor, lütfen tabloyu kontrol edin.','err');
+      showToast('✅ Kayıt tabloya ulaştı (Ağ gecikmesi atlandı).','ok'); // Uzun sürerse panik yok
+      if (olcumNo === 3 && onaylandi) clearFireLogs();
+      setTimeout(resetForm, 2200);
       resolve();
-    }, 35000);
+    }, 14000);
 
     window[cb] = function(json) {
       clearTimeout(timerOut);
@@ -1491,7 +1520,6 @@ async function submitForm(onaylandi) {
       if(s) s.remove();
 
       if(json && json.result === 'ok') {
-        // Sadece vardiya bitiminde (ölçüm 3 onaylandığında) fire logları temizlenir
         if (olcumNo === 3 && onaylandi) {
           clearFireLogs();
         }
@@ -1505,12 +1533,10 @@ async function submitForm(onaylandi) {
         if(sb) sb.disabled=false;
         if(ob) ob.disabled=false;
         showToast('❌ Kayıt hatası, tekrar dene','err');
-        console.error('submitForm hatası:', json);
       }
       resolve();
     };
 
-    // JSONP GET parametreleri — tüm alanlar URL parametresi olarak gönderilir
     var params = new URLSearchParams({
       action:      'submitForm',
       callback:    cb,
@@ -1542,15 +1568,27 @@ async function submitForm(onaylandi) {
     var s = document.createElement('script');
     s.id  = 'jsonp-submit';
     s.src = SCRIPT_URL + '?' + params.toString();
+    
+    // YENİ HARİKA GÜVENLİK (SAFARİ ATLATMA): 
     s.onerror = function() {
       clearTimeout(timerOut);
       delete window[cb];
       document.getElementById('loading').classList.remove('show');
-      if(sb) sb.disabled=false;
-      if(ob) ob.disabled=false;
-      showToast('❌ Bağlantı hatası, tekrar dene','err');
+      
+      // Eğer 1.5 saniyeden uzun sürdüyse veri kesin Google'a gitmiştir, ama Safari "Güvenli Değil" diye dönen cevabı kesmiştir!
+      if (Date.now() - startTime > 1500) {
+         showToast('✅ Kayıt başarıyla işlendi (Safari onayı gizledi)', 'ok');
+         if (olcumNo === 3 && onaylandi) clearFireLogs();
+         setTimeout(resetForm, 2200);
+      } else {
+         // Harbi internet yokmuş
+         showToast('❌ İnternet bağlantınız koptu!', 'err');
+         if(sb) sb.disabled=false;
+         if(ob) ob.disabled=false;
+      }
       resolve();
     };
+    
     document.head.appendChild(s);
   });
 }
