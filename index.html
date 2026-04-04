@@ -285,12 +285,12 @@ input.error,select.error{border-color:var(--warn)!important}
     <div class="row2">
       <div class="field">
         <label id="lbl-bas1">Sayaç Başlama <span class="req">*</span></label>
-        <input type="number" id="sayac_bas1" placeholder="0" style="font-size:18px;font-weight:800" oninput="calcUretim(1)">
+        <input type="text" id="sayac_bas1" placeholder="0" inputmode="numeric" pattern="[0-9]*" style="font-size:18px;font-weight:800" oninput="this.value=this.value.replace(/[^0-9]/g,''); calcUretim(1)">
         <div class="err-msg" id="err-bas1">Gerekli</div>
       </div>
       <div class="field">
         <label>Sayaç Bitiş <span class="req">*</span></label>
-        <input type="number" id="sayac_bit1" placeholder="0" style="font-size:18px;font-weight:800" oninput="calcUretim(1)">
+        <input type="text" id="sayac_bit1" placeholder="0" inputmode="numeric" pattern="[0-9]*" style="font-size:18px;font-weight:800" oninput="this.value=this.value.replace(/[^0-9]/g,''); calcUretim(1)">
         <div class="err-msg" id="err-bit1">Gerekli</div>
       </div>
     </div>
@@ -309,7 +309,7 @@ input.error,select.error{border-color:var(--warn)!important}
       </div>
       <div class="counter" id="fire-counter1">
         <button class="cbtn" onmousedown="startFireAdj(1,-1)" onmouseup="stopFireAdj()" onmouseleave="stopFireAdj()" ontouchstart="startFireAdj(1,-1);event.preventDefault()" ontouchend="stopFireAdj()" ontouchcancel="stopFireAdj()">−</button>
-        <input class="cval" type="number" id="fire1" value="0" min="0" inputmode="numeric" oninput="clampFire(1)">
+        <input class="cval" type="text" id="fire1" value="0" inputmode="numeric" pattern="[0-9]*" oninput="this.value=this.value.replace(/[^0-9]/g,''); clampFire(1)">
         <button class="cbtn" onmousedown="startFireAdj(1,1)" onmouseup="stopFireAdj()" onmouseleave="stopFireAdj()" ontouchstart="startFireAdj(1,1);event.preventDefault()" ontouchend="stopFireAdj()" ontouchcancel="stopFireAdj()">+</button>
       </div>
       <div class="err-msg" id="err-fire1" style="text-align:center; font-size:13px; margin-top:8px;"></div>
@@ -377,12 +377,12 @@ input.error,select.error{border-color:var(--warn)!important}
     <div class="row2">
       <div class="field">
         <label id="lbl-bas2">Sayaç Başlama <span class="req">*</span></label>
-        <input type="number" id="sayac_bas2" placeholder="0" style="font-size:18px;font-weight:800" oninput="calcUretim(2)">
+        <input type="text" id="sayac_bas2" placeholder="0" inputmode="numeric" pattern="[0-9]*" style="font-size:18px;font-weight:800" oninput="this.value=this.value.replace(/[^0-9]/g,''); calcUretim(2)">
         <div class="err-msg" id="err-bas2">Gerekli</div>
       </div>
       <div class="field">
         <label>Sayaç Bitiş <span class="req">*</span></label>
-        <input type="number" id="sayac_bit2" placeholder="0" style="font-size:18px;font-weight:800" oninput="calcUretim(2)">
+        <input type="text" id="sayac_bit2" placeholder="0" inputmode="numeric" pattern="[0-9]*" style="font-size:18px;font-weight:800" oninput="this.value=this.value.replace(/[^0-9]/g,''); calcUretim(2)">
         <div class="err-msg" id="err-bit2">Gerekli</div>
       </div>
     </div>
@@ -401,7 +401,7 @@ input.error,select.error{border-color:var(--warn)!important}
       </div>
       <div class="counter" id="fire-counter2">
         <button class="cbtn" onmousedown="startFireAdj(2,-1)" onmouseup="stopFireAdj()" onmouseleave="stopFireAdj()" ontouchstart="startFireAdj(2,-1);event.preventDefault()" ontouchend="stopFireAdj()" ontouchcancel="stopFireAdj()">−</button>
-        <input class="cval" type="number" id="fire2" value="0" min="0" inputmode="numeric" oninput="clampFire(2)">
+        <input class="cval" type="text" id="fire2" value="0" inputmode="numeric" pattern="[0-9]*" oninput="this.value=this.value.replace(/[^0-9]/g,''); clampFire(2)">
         <button class="cbtn" onmousedown="startFireAdj(2,1)" onmouseup="stopFireAdj()" onmouseleave="stopFireAdj()" ontouchstart="startFireAdj(2,1);event.preventDefault()" ontouchend="stopFireAdj()" ontouchcancel="stopFireAdj()">+</button>
       </div>
       <div class="err-msg" id="err-fire2" style="text-align:center; font-size:13px; margin-top:8px;"></div>
@@ -491,53 +491,29 @@ var _timeOffset = 0, _t0 = 0;
 var _fireAdjTimer = null, _fireAdjInterval = null;
 var _pendingFire = null; 
 
-// =========================================================
-// YENİ: VİRGÜLSÜZ YAZILANLARI OTOMATİK ÇEVİREN SİHİRLİ KODLAR
-// =========================================================
 function formatCevrim(el) {
-  // Virgülleri noktaya çevir ve sadece rakam/nokta kalsın
   let val = el.value.replace(/,/g, '.').replace(/[^0-9.]/g, '');
   if (!val) return;
-  
-  // İçinde hiç nokta yoksa (kullanıcı dümdüz yazdıysa)
   if (!val.includes('.')) {
-    if (val.length === 3) {
-       // Örn: 182 -> 18.2
-       val = val.slice(0, 2) + '.' + val.slice(2);
-    } else if (val.length >= 4) {
-       // Örn: 1344 -> 13.44
-       val = val.slice(0, val.length - 2) + '.' + val.slice(val.length - 2);
-    }
+    if (val.length === 3) val = val.slice(0, 2) + '.' + val.slice(2);
+    else if (val.length >= 4) val = val.slice(0, val.length - 2) + '.' + val.slice(val.length - 2);
   }
-  
   let num = parseFloat(val);
-  if (!isNaN(num)) {
-    el.value = num.toFixed(2);
-  } else {
-    el.value = '';
-  }
+  el.value = !isNaN(num) ? num.toFixed(2) : '';
 }
 
 function formatAgirlik(el, n) {
   let val = el.value.replace(/,/g, '.').replace(/[^0-9.]/g, '');
   if (!val) return;
-  
   if (!val.includes('.')) {
-    if (val.length >= 4) {
-       // Örn: 4505 -> 450.5
-       val = val.slice(0, val.length - 1) + '.' + val.slice(val.length - 1);
-    }
+    if (val.length >= 4) val = val.slice(0, val.length - 1) + '.' + val.slice(val.length - 1);
   }
-  
   let num = parseFloat(val);
   if (!isNaN(num)) {
     el.value = num.toFixed(1);
     checkKasaAgirlik(n);
-  } else {
-    el.value = '';
-  }
+  } else el.value = '';
 }
-// =========================================================
 
 window.onload = async function() {
   const now = new Date();
@@ -571,11 +547,7 @@ function garbageCollector() {
     if (key.startsWith('fireLog_') || key.startsWith('fpUnlock_')) {
       const parts = key.split('_');
       if (parts.length >= 3) {
-        const keyDate = parts[1];
-        const keyVardiya = parts[2];
-        if (keyDate !== currentDate || keyVardiya !== currentVardiya) {
-          keysToRemove.push(key);
-        }
+        if (parts[1] !== currentDate || parts[2] !== currentVardiya) keysToRemove.push(key);
       }
     }
   }
@@ -653,10 +625,12 @@ function restoreDraft() {
     if(d.vardiya) setVardiya(d.vardiya);
     if(d.tarih) document.getElementById('tarih').value = d.tarih;
     setEnjSayisi(d.enjSayisi || 1);
-    ['enj1_no','kasa1','enj2_no','kasa2',
-     'cevrim1','agirlik1','sayac_bas1','sayac_bit1',
-     'cevrim2','agirlik2','sayac_bas2','sayac_bit2'
-    ].forEach(id=>{ const el=document.getElementById(id); if(el&&d[id]!==undefined) el.value=d[id]; });
+    
+    // YENİ: Sayaçları Güvenli Şekilde Geri Yükleme
+    ['enj1_no','kasa1','enj2_no','kasa2','cevrim1','agirlik1','sayac_bit1','cevrim2','agirlik2','sayac_bit2'].forEach(id=>{ 
+      const el=document.getElementById(id); if(el&&d[id]!==undefined) el.value=d[id]; 
+    });
+    
     [1,2].forEach(n=>{
       const val=d['enj'+n+'_no'];
       if(val) {
@@ -664,9 +638,28 @@ function restoreDraft() {
           if(b.getAttribute('onclick').includes("'"+val+"'")) b.classList.add('sel');
         });
         loadAccumulatedFire(n, val);
+
+        // YENİ: Draft yüklendiğinde Başlangıç sayacını teyit et
+        const draftedBas = d['sayac_bas'+n];
+        const cb = 'cbLCRestore'+n+'_'+Date.now();
+        window[cb] = function(json) {
+          delete window[cb];
+          const basEl = document.getElementById('sayac_bas'+n);
+          if(json && json.sayacBit !== null && json.sayacBit !== undefined) {
+            basEl.value = json.sayacBit;
+            setBasReadonly(n);
+          } else if (draftedBas) {
+            basEl.value = draftedBas;
+            setBasEditable(n);
+          }
+          calcUretim(n);
+        };
+        var s = document.createElement('script');
+        s.src = SCRIPT_URL+'?action=getLastCounter&enj_no='+encodeURIComponent(val)+'&callback='+cb;
+        document.head.appendChild(s);
       }
     });
-    calcUretim(1); calcUretim(2);
+
     syncEnjDisabled();
     if(d.step && d.step > 1) goStep(d.step);
     checkStatus();
@@ -1151,9 +1144,6 @@ async function executeInstantFire(n, amount, enjNo) {
     delete window[cb];
     var s = document.getElementById('jsonp-fire-'+n);
     if(s) s.remove();
-    if(json && json.result !== 'ok') {
-      console.warn('Fire log sunucuya kaydedilemedi:', json);
-    }
   };
   var params = new URLSearchParams({
     action:       'logFire',
@@ -1169,8 +1159,49 @@ async function executeInstantFire(n, amount, enjNo) {
   var s = document.createElement('script');
   s.id  = 'jsonp-fire-'+n;
   s.src = SCRIPT_URL + '?' + params.toString();
-  s.onerror = function() { delete window[cb]; console.warn('Fire log JSONP hatası'); };
   document.head.appendChild(s);
+}
+
+// YENİ: Bekleyen (Butona Basılmamış) Fireleri Arka Planda Sessizce Gönderen Süpürücü Fonksiyon
+function flushPendingFires() {
+  [1, 2].forEach(n => {
+    if (enjSayisi === 1 && n === 2) return;
+    const fInput = document.getElementById('fire'+n);
+    if (!fInput) return;
+    const val = parseInt(fInput.value) || 0;
+    const enjNo = document.getElementById('enj'+n+'_no').value;
+    if (val > 0 && enjNo && !isFpFireLocked(enjNo)) {
+      
+      var tarih = getFpTarih();
+      var saat  = document.getElementById('olcum_saat').value;
+      
+      var log = getFpLog(tarih, vardiya, enjNo);
+      log.push({ ts: Date.now(), amount: val });
+      try { localStorage.setItem(getFpLogKey(tarih, vardiya, enjNo), JSON.stringify(log)); } catch(ex){}
+      localStorage.setItem(getFpUnlockKey(tarih, vardiya, enjNo), String(Date.now() + 15*60*1000));
+      
+      fInput.value = '0'; 
+      loadAccumulatedFire(n, enjNo); 
+      
+      var cb = 'cbFireSilent_' + Date.now() + '_' + n;
+      window[cb] = function(json) { delete window[cb]; document.getElementById('jsonp-fire-s-'+n)?.remove(); };
+      var params = new URLSearchParams({
+        action:       'logFire',
+        tarih:        tarih,
+        olcum_saat:   saat,
+        kullanici_id: document.getElementById('kullanici_id').value,
+        adsoyad:      _adSoyad || document.getElementById('kullanici_id').value,
+        vardiya:      vardiya  || '',
+        makine_no:    enjNo,
+        fire_miktari: val,
+        callback:     cb
+      });
+      var s = document.createElement('script');
+      s.id  = 'jsonp-fire-s-'+n;
+      s.src = SCRIPT_URL + '?' + params.toString();
+      document.head.appendChild(s);
+    }
+  });
 }
 
 function loadAccumulatedFire(n, enjNo) {
@@ -1312,13 +1343,15 @@ function validate1() {
 function validate2() {
   let ok=true;
   
-  // Güvence: Gönder butonuna basıldığında son haliyle formatları toparla
   formatCevrim(document.getElementById('cevrim1'));
   formatAgirlik(document.getElementById('agirlik1'), 1);
   if(enjSayisi===2) {
     formatCevrim(document.getElementById('cevrim2'));
     formatAgirlik(document.getElementById('agirlik2'), 2);
   }
+
+  // YENİ EKLENDİ: İleri Butonuna Basıldığında Unutulan Fireleri Otomatik Süpürür ve Kaydeder
+  flushPendingFires();
 
   function chk(id,errId) {
     const el=document.getElementById(id);
@@ -1474,7 +1507,7 @@ function getData() {
     tarih:      document.getElementById('tarih').value,
     olcum_saat: document.getElementById('olcum_saat').value,
     enj1_no:enj1, kasa1:k1,
-    cevrim1: document.getElementById('cevrim1').value, // Artık zeka düzeltmiş olacak
+    cevrim1: document.getElementById('cevrim1').value, 
     agirlik1:document.getElementById('agirlik1').value,
     sayac_bas1:b1, sayac_bit1:e1, uretim1:e1-b1,
     fire1:   totalFire1,
@@ -1500,14 +1533,12 @@ async function submitForm(onaylandi) {
 
   return new Promise(function(resolve) {
     var cb = 'cbSubmit_' + Date.now();
-    
-    // GÜNCELLEME: Zamanı ölçüyoruz ki hatanın Safari'den mi yoksa internetsizlikten mi olduğunu anlayalım
     var startTime = Date.now();
 
     var timerOut = setTimeout(function() {
       delete window[cb];
       document.getElementById('loading').classList.remove('show');
-      showToast('✅ Kayıt tabloya ulaştı (Ağ gecikmesi atlandı).','ok'); // Uzun sürerse panik yok
+      showToast('✅ Kayıt tabloya ulaştı (Ağ gecikmesi atlandı).','ok');
       if (olcumNo === 3 && onaylandi) clearFireLogs();
       setTimeout(resetForm, 2200);
       resolve();
@@ -1568,20 +1599,16 @@ async function submitForm(onaylandi) {
     var s = document.createElement('script');
     s.id  = 'jsonp-submit';
     s.src = SCRIPT_URL + '?' + params.toString();
-    
-    // YENİ HARİKA GÜVENLİK (SAFARİ ATLATMA): 
     s.onerror = function() {
       clearTimeout(timerOut);
       delete window[cb];
       document.getElementById('loading').classList.remove('show');
       
-      // Eğer 1.5 saniyeden uzun sürdüyse veri kesin Google'a gitmiştir, ama Safari "Güvenli Değil" diye dönen cevabı kesmiştir!
       if (Date.now() - startTime > 1500) {
          showToast('✅ Kayıt başarıyla işlendi (Safari onayı gizledi)', 'ok');
          if (olcumNo === 3 && onaylandi) clearFireLogs();
          setTimeout(resetForm, 2200);
       } else {
-         // Harbi internet yokmuş
          showToast('❌ İnternet bağlantınız koptu!', 'err');
          if(sb) sb.disabled=false;
          if(ob) ob.disabled=false;
