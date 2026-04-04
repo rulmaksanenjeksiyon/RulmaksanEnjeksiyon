@@ -273,7 +273,7 @@ input.error,select.error{border-color:var(--warn)!important}
 
     <div class="field">
       <label>Çevrim Süresi <span class="req">*</span></label>
-      <div class="ui"><input type="number" id="cevrim1" placeholder="0" min="0" inputmode="numeric"><span class="ub">sn</span></div>
+      <div class="ui"><input type="number" id="cevrim1" placeholder="0.00" min="0" step="0.01" inputmode="decimal"><span class="ub">sn</span></div>
       <div class="err-msg" id="err-cevrim1">Gerekli</div>
     </div>
     <div class="field">
@@ -364,7 +364,7 @@ input.error,select.error{border-color:var(--warn)!important}
 
     <div class="field">
       <label>Çevrim Süresi <span class="req">*</span></label>
-      <div class="ui"><input type="number" id="cevrim2" placeholder="0" min="0" inputmode="numeric"><span class="ub">sn</span></div>
+      <div class="ui"><input type="number" id="cevrim2" placeholder="0.00" min="0" step="0.01" inputmode="decimal"><span class="ub">sn</span></div>
       <div class="err-msg" id="err-cevrim2">Gerekli</div>
     </div>
     <div class="field">
@@ -1444,12 +1444,14 @@ function getData() {
     tarih:      document.getElementById('tarih').value,
     olcum_saat: document.getElementById('olcum_saat').value,
     enj1_no:enj1, kasa1:k1,
-    cevrim1: document.getElementById('cevrim1').value,
+    // GÜNCELLEME: iPhone için virgül (,) noktaya (.) çevrildi
+    cevrim1: document.getElementById('cevrim1').value.replace(',', '.'),
     agirlik1:document.getElementById('agirlik1').value,
     sayac_bas1:b1, sayac_bit1:e1, uretim1:e1-b1,
     fire1:   totalFire1,
     enj2_no:enj2, kasa2:k2,
-    cevrim2: enjSayisi===2 ? document.getElementById('cevrim2').value : '00',
+    // GÜNCELLEME: iPhone için virgül (,) noktaya (.) çevrildi
+    cevrim2: enjSayisi===2 ? document.getElementById('cevrim2').value.replace(',', '.') : '00',
     agirlik2:enjSayisi===2 ? document.getElementById('agirlik2').value : '00',
     sayac_bas2:enjSayisi===2?b2:'00', sayac_bit2:enjSayisi===2?e2:'00',
     uretim2: enjSayisi===2?e2-b2:0,
@@ -1470,15 +1472,17 @@ async function submitForm(onaylandi) {
 
   return new Promise(function(resolve) {
     var cb = 'cbSubmit_' + Date.now();
+    
+    // GÜNCELLEME: Timeout 35 saniyeye uzatıldı ve arka arkaya basmayı önlemek için buton kilitleri açılmadı
     var timerOut = setTimeout(function() {
-      // 15 saniye timeout — no-cors'tan daha güvenilir ama network kesilirse
       delete window[cb];
       document.getElementById('loading').classList.remove('show');
-      if(sb) sb.disabled=false;
-      if(ob) ob.disabled=false;
-      showToast('❌ Bağlantı zaman aşımı, tekrar dene','err');
+      // ÇİFT TIKLAMAYI ÖNLEMEK İÇİN BURADAKİ BUTON AKTİF ETME KODLARI DEVRE DIŞI
+      // if(sb) sb.disabled=false; 
+      // if(ob) ob.disabled=false;
+      showToast('⚠️ Kayıt uzun sürüyor, lütfen tabloyu kontrol edin.','err');
       resolve();
-    }, 15000);
+    }, 35000);
 
     window[cb] = function(json) {
       clearTimeout(timerOut);
@@ -1635,4 +1639,3 @@ function showToast(msg,type='ok'){
 </script>
 </body>
 </html>
-s
