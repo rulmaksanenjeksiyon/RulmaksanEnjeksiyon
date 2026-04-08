@@ -1,6 +1,6 @@
 /* ── Uygulama Sabitleri ────────────────────────────── */
 
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw_XncWVGH4JG5okF0CP71PJWWtyw6MSUcxriwH9qtcYMreKj12OpKdWON6HHoBEwVFYQ/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzQHldmXuZnsm-pPzrGUfwhIsahNTcCQooHQRnWTVa2ML20BOJiZRyyFxlLwuLF22bWaQ/exec';;
 
 const KASA_AGIRLIK = {
   '30x40x10': { min: 220,  max: 342  },
