@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<!-- index.html -->
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#16a34a">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Ersan Plastik">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-180.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+  <title>Ersan Plastik</title>
+
+  <!-- Stiller -->
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<header>
+  <h1>🏭 Ersan Plastik</h1>
+  <p>Enjeksiyon Operatör Giriş Formu</p>
+  <div id="header-date"></div>
+</header>
+
+<!-- ── Adım göstergesi ── -->
+<div class="steps">
+  <div class="step active" id="step-1"><div class="sn">1</div>Giriş</div>
+  <div class="step"        id="step-2"><div class="sn">2</div>Ölçüm</div>
+  <div class="step"        id="step-3"><div class="sn">3</div>Özet</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     SAYFA 1 — Kimlik & Vardiya
+══════════════════════════════════════════════════ -->
+<div class="page active" id="page-1">
+
+  <!-- Yarım kalan giriş banneri -->
+  <div class="draft-banner" id="draft-banner">
+    <div class="draft-banner-top"><span>📋</span> Yarım kalan giriş var</div>
+    <div class="draft-banner-sub" id="draft-banner-sub">Yükleniyor...</div>
+    <div class="draft-banner-btns">
+      <button class="draft-btn-devam" onclick="restoreDraft()">Devam Et</button>
+      <button class="draft-btn-sil"   onclick="clearDraft()">Sil</button>
+    </div>
+  </div>
+
+  <div id="status-box" style="display:none"></div>
+
+  <div class="section">
+    <div class="stitle"><span>👤</span> Kimlik Doğrulama</div>
+
+    <div class="field">
+      <div id="hosgeldin" class="ibox green" style="display:none;margin-bottom:10px">
+        <span>👋</span><span id="hosgeldin-text"></span>
+      </div>
+      <label>Kullanıcı ID <span class="req">*</span></label>
+      <input type="text" id="kullanici_id" placeholder="ID numaranızı girin"
+             inputmode="numeric" maxlength="3" autocomplete="off" oninput="onIdChange()">
+      <div class="err-msg" id="err-ad">Bu ID sistemde tanımlı değil</div>
+      <div style="margin-top:8px;text-align:right">
+        <button type="button" id="listeden-sec-btn" onclick="openPersonelPicker()"
+          style="background:none;border:none;color:var(--accent);font-family:'Nunito',sans-serif;font-size:14px;font-weight:700;cursor:pointer;padding:4px 0;display:none">
+          👥 Listeden seçin
+        </button>
+      </div>
+    </div>
+
+    <div class="field" id="sifre-field" style="display:none">
+      <label>Şifre <span class="req">*</span></label>
+      <input type="password" id="sifre" placeholder="••••" inputmode="numeric" oninput="clearSifreErr()">
+      <div class="err-msg" id="err-sifre">Şifre yanlış</div>
+      <div class="remember-row">
+        <input type="checkbox" id="hatirla">
+        <label for="hatirla">Şifremi hatırla</label>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Vardiya <span class="req">*</span></label>
+      <div class="vardiya-row">
+        <button class="vbtn" id="v-sabah" onclick="setVardiya('SABAH')">
+          <span class="vi">☀️</span>Sabah<span class="vt">09:00–17:00</span>
+        </button>
+        <button class="vbtn" id="v-aksam" onclick="setVardiya('AKSAM')">
+          <span class="vi">🌆</span>Akşam<span class="vt">17:00–01:00</span>
+        </button>
+        <button class="vbtn" id="v-gece"  onclick="setVardiya('GECE')">
+          <span class="vi">🌙</span>Gece<span class="vt">01:00–09:00</span>
+        </button>
+      </div>
+      <div class="err-msg" id="err-vardiya">Lütfen vardiya seçin</div>
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <label>Tarih</label>
+        <input type="text" id="tarih" readonly
+               style="background:var(--accent-light);border-color:var(--accent);color:var(--accent);pointer-events:none;user-select:none;-webkit-user-select:none">
+      </div>
+      <div class="field">
+        <label>Ölçüm Saati</label>
+        <input type="time" id="olcum_saat" readonly
+               style="background:var(--accent-light);border-color:var(--accent);color:var(--accent)">
+      </div>
+    </div>
+  </div>
+
+  <div class="nav-row">
+    <button class="btn btn-next" onclick="goNext(1)" style="width:100%">Devam Et →</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     SAYFA 2 — Enjeksiyon & Ölçümler
+══════════════════════════════════════════════════ -->
+<div class="page" id="page-2">
+
+  <!-- Enjeksiyon sayısı -->
+  <div class="section">
+    <div class="stitle"><span>🏭</span> Bu Vardiyada Kaç Enjeksiyonla Çalışıyorsunuz?</div>
+    <div class="toggle-row" id="enj-toggle-row">
+      <button class="tbtn active" id="t-1" onclick="setEnjSayisi(1)">Tek Enjeksiyon</button>
+      <button class="tbtn"        id="t-2" onclick="setEnjSayisi(2)">Çift Enjeksiyon</button>
+    </div>
+  </div>
+
+  <!-- ── Enjeksiyon 1 Bilgileri ── -->
+  <div class="section">
+    <div class="stitle"><span>1️⃣</span> <span id="enj1-title">1. Enjeksiyon Bilgileri</span></div>
+
+    <div id="enj1-sec" class="field">
+      <label>Hangi Enjeksiyonda Çalışıyorsunuz? <span class="req">*</span></label>
+      <input type="hidden" id="enj1_no" value="">
+      <div class="enj-grid" id="enj1-grid">
+        <button class="enj-gbtn" type="button" onclick="selectEnj(1,'Enjeksiyon 1',this)">Enj 1</button>
+        <button class="enj-gbtn" type="button" onclick="selectEnj(1,'Enjeksiyon 2',this)">Enj 2</button>
+        <button class="enj-gbtn" type="button" onclick="selectEnj(1,'Enjeksiyon 3',this)">Enj 3</button>
+        <button class="enj-gbtn" type="button" onclick="selectEnj(1,'Enjeksiyon 4',this)">Enj 4</button>
+        <button class="enj-gbtn" type="button" onclick="selectEnj(1,'Enjeksiyon 5',this)">Enj 5</button>
+        <button class="enj-gbtn" type="button" onclick="selectEnj(1,'Enjeksiyon 6',this)">Enj 6</button>
+        <button class="enj-gbtn" type="button" onclick="selectEnj(1,'Enjeksiyon 7',this)">Enj 7</button>
+        <button class="enj-gbtn" type="button" onclick="selectEnj(1,'Enjeksiyon 8',this)">Enj 8</button>
+        <button class="enj-gbtn" type="button" onclick="selectEnj(1,'Enjeksiyon 9',this)">Enj 9</button>
+        <button class="enj-gbtn" type="button" onclick="selectEnj(1,'Enjeksiyon 10',this)">Enj 10</button>
+        <button class="enj-gbtn" type="button" onclick="selectEnj(1,'Enjeksiyon 11',this)">Enj 11</button>
+        <button class="enj-gbtn" type="button" onclick="selectEnj(1,'Enjeksiyon 12',this)">Enj 12</button>
+        <button class="enj-gbtn" type="button" onclick="selectEnj(1,'Enjeksiyon 13',this)">Enj 13</button>
+      </div>
+      <div class="err-msg" id="err-enj1">Lütfen Enjeksiyon seçin</div>
+    </div>
+    <div id="enj1-ro" style="display:none" class="field">
+      <span class="ro-label">Makine</span>
+      <div class="ro-field">🏭 <span id="enj1-ro-val"></span></div>
+    </div>
+
+    <div id="kasa1-sec" class="field">
+      <label>Kasa Boyutu <span class="req">*</span></label>
+      <div id="kasa1-atandi-box" class="ibox green" style="display:none;margin-bottom:10px;font-size:15px;font-weight:700">
+        <span>📦</span>
+        <span>Meydancı atadı: <strong id="kasa1-atandi-val"></strong></span>
+      </div>
+      <div id="skel-kasa1" class="skeleton"></div>
+      <select id="kasa1" style="display:none"><option value="">— Kasa boyutunu seçin —</option></select>
+      <div class="err-msg" id="err-kasa1">Lütfen kasa boyutu seçin</div>
+    </div>
+    <div id="kasa1-ro" style="display:none" class="field">
+      <span class="ro-label">Kasa Boyutu</span>
+      <div class="ro-field">📦 <span id="kasa1-ro-val"></span></div>
+    </div>
+  </div>
+
+  <!-- ── Enjeksiyon 1 Ölçümler ── -->
+  <div class="section">
+    <div class="stitle"><span>1️⃣</span> <span id="olcum-enj1-title">Ölçümler</span></div>
+
+    <div class="field">
+      <label>Çevrim Süresi <span class="req">*</span></label>
+      <div class="ui">
+        <input type="number" id="cevrim1" placeholder="Kaç saniye?" min="0" inputmode="decimal" onblur="formatCevrim(this)">
+        <span class="ub">sn</span>
+      </div>
+      <div class="err-msg" id="err-cevrim1">Gerekli</div>
+    </div>
+
+    <div class="field">
+      <label>Kasa Ağırlığı <span class="req">*</span></label>
+      <div class="ui">
+        <input type="number" id="agirlik1" placeholder="Kaç gram?" min="0" step="0.1"
+               inputmode="decimal" oninput="checkKasaAgirlik(1)">
+        <span class="ub">gr</span>
+      </div>
+      <div class="err-msg" id="err-agirlik1">Gerekli</div>
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <label id="lbl-bas1">Sayaç — Başlangıç <span class="req">*</span></label>
+        <input type="number" id="sayac_bas1" placeholder="0"
+               style="font-size:20px;font-weight:800" oninput="calcUretim(1)">
+        <div class="err-msg" id="err-bas1">Gerekli</div>
+      </div>
+      <div class="field">
+        <label>Sayaç — Bitiş <span class="req">*</span></label>
+        <input type="number" id="sayac_bit1" placeholder="0"
+               style="font-size:20px;font-weight:800" oninput="calcUretim(1)">
+        <div class="err-msg" id="err-bit1">Gerekli</div>
+      </div>
+    </div>
+
+    <div class="result-box" id="uretim-box1">
+      <div class="result-label" id="result-label1">🏭 Toplam Üretim</div>
+      <div class="result-val"   id="result-val1">—</div>
+    </div>
+    <!-- Fire girişi — Enj 1 -->
+    <div class="field" style="margin-top:14px;background:var(--bg);padding:14px;border-radius:12px;border:2px solid var(--border)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <label style="margin:0">🔥 Bozuk / Fire Ürün Ekle</label>
+        <div id="fire-toplam-box1" style="display:none;font-size:12px;font-weight:800;color:var(--warn);background:#fef2f2;padding:4px 8px;border-radius:8px;border:1px solid #fecaca">
+          Bugünkü Toplam: <span id="fire-toplam1" style="font-size:14px">0</span>
+        </div>
+      </div>
+      <div class="counter" id="fire-counter1">
+        <button class="cbtn"
+          onmousedown="startFireAdj(1,-1)" onmouseup="stopFireAdj()" onmouseleave="stopFireAdj()"
+          ontouchstart="startFireAdj(1,-1);event.preventDefault()" ontouchend="stopFireAdj()" ontouchcancel="stopFireAdj()">−</button>
+        <input class="cval" type="number" id="fire1" value="0" min="0" inputmode="numeric" oninput="clampFire(1)">
+        <button class="cbtn"
+          onmousedown="startFireAdj(1,1)" onmouseup="stopFireAdj()" onmouseleave="stopFireAdj()"
+          ontouchstart="startFireAdj(1,1);event.preventDefault()" ontouchend="stopFireAdj()" ontouchcancel="stopFireAdj()">+</button>
+      </div>
+      <div class="err-msg" id="err-fire1" style="text-align:center;font-size:13px;margin-top:8px"></div>
+      <button class="btn btn-submit" id="btn-fire-ekle1" onclick="promptInstantFire(1)"
+              style="width:100%;margin-top:10px;padding:16px;font-size:17px;background:#ea580c;border:none">
+        ➕ Fire Ekle
+      </button>
+      <div class="ibox orange" id="fire-lock-msg1" style="display:none;margin-top:10px;margin-bottom:0">
+        🔒 Fire <span id="fire-lock-cd1">--:--</span> sonra eklenebilir
+      </div>
+      <div id="fire-history1" style="display:none;margin-top:14px;border-top:1px solid var(--border);padding-top:10px">
+        <div style="font-size:11px;font-weight:800;color:var(--text2);margin-bottom:6px">📋 BUGÜNKÜ GİRİŞLER</div>
+        <div id="fire-history-list1"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Enjeksiyon 2 Bilgileri ── -->
+  <div class="section" id="enj2-section" style="display:none">
+    <div class="stitle"><span>2️⃣</span> 2. Enjeksiyon Bilgileri</div>
+
+    <div id="enj2-sec" class="field">
+      <label>2. Enjeksiyonunuz Hangisi? <span class="req">*</span></label>
+      <input type="hidden" id="enj2_no" value="">
+      <div class="enj-grid" id="enj2-grid">
+        <button class="enj-gbtn" type="button" onclick="selectEnj(2,'Enjeksiyon 1',this)">Enj 1</button>
+        <button class="enj-gbtn" type="button" onclick="selectEnj(2,'Enjeksiyon 2',this)">Enj 2</button>
+        <button class="enj-gbtn" type="button" onclick="selectEnj(2,'Enjeksiyon 3',this)">Enj 3</button>
+        <button class="enj-gbtn" type="button" onclick="selectEnj(2,'Enjeksiyon 4',this)">Enj 4</button>
+        <button class="enj-gbtn" type="button" onclick="selectEnj(2,'Enjeksiyon 5',this)">Enj 5</button>
+        <button class="enj-gbtn" type="button" onclick="selectEnj(2,'Enjeksiyon 6',this)">Enj 6</button>
+        <button class="enj-gbtn" type="button" onclick="selectEnj(2,'Enjeksiyon 7',this)">Enj 7</button>
+        <button class="enj-gbtn" type="button" onclick="selectEnj(2,'Enjeksiyon 8',this)">Enj 8</button>
+        <button class="enj-gbtn" type="button" onclick="selectEnj(2,'Enjeksiyon 9',this)">Enj 9</button>
+        <button class="enj-gbtn" type="button" onclick="selectEnj(2,'Enjeksiyon 10',this)">Enj 10</button>
+        <button class="enj-gbtn" type="button" onclick="selectEnj(2,'Enjeksiyon 11',this)">Enj 11</button>
+        <button class="enj-gbtn" type="button" onclick="selectEnj(2,'Enjeksiyon 12',this)">Enj 12</button>
+        <button class="enj-gbtn" type="button" onclick="selectEnj(2,'Enjeksiyon 13',this)">Enj 13</button>
+      </div>
+      <div class="err-msg" id="err-enj2">Lütfen makine seçin</div>
+    </div>
+    <div id="enj2-ro" style="display:none" class="field">
+      <span class="ro-label">Makine</span>
+      <div class="ro-field">🏭 <span id="enj2-ro-val"></span></div>
+    </div>
+
+    <div id="kasa2-sec" class="field">
+      <label>Kasa Boyutu <span class="req">*</span></label>
+      <div id="kasa2-atandi-box" class="ibox green" style="display:none;margin-bottom:10px;font-size:15px;font-weight:700">
+        <span>📦</span>
+        <span>Meydancı atadı: <strong id="kasa2-atandi-val"></strong></span>
+      </div>
+      <select id="kasa2"><option value="">— Kasa boyutunu seçin —</option></select>
+      <div class="err-msg" id="err-kasa2">Lütfen kasa boyutu seçin</div>
+    </div>
+    <div id="kasa2-ro" style="display:none" class="field">
+      <span class="ro-label">Kasa Boyutu</span>
+      <div class="ro-field">📦 <span id="kasa2-ro-val"></span></div>
+    </div>
+  </div>
+
+  <!-- ── Enjeksiyon 2 Ölçümler ── -->
+  <div class="section" id="olcum-enj2-section" style="display:none">
+    <div class="stitle"><span>2️⃣</span> <span id="olcum-enj2-title">2. Enjeksiyon — Ölçümler</span></div>
+
+    <div class="field">
+      <label>Çevrim Süresi <span class="req">*</span></label>
+      <div class="ui">
+        <input type="number" id="cevrim2" placeholder="0" min="0" inputmode="decimal" onblur="formatCevrim(this)">
+        <span class="ub">sn</span>
+      </div>
+      <div class="err-msg" id="err-cevrim2">Gerekli</div>
+    </div>
+
+    <div class="field">
+      <label>Kasa Ağırlığı <span class="req">*</span></label>
+      <div class="ui">
+        <input type="number" id="agirlik2" placeholder="0.0" min="0" step="0.1"
+               inputmode="decimal" oninput="checkKasaAgirlik(2)">
+        <span class="ub">gr</span>
+      </div>
+      <div class="err-msg" id="err-agirlik2">Gerekli</div>
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <label id="lbl-bas2">Sayaç — Başlangıç <span class="req">*</span></label>
+        <input type="number" id="sayac_bas2" placeholder="0"
+               style="font-size:20px;font-weight:800" oninput="calcUretim(2)">
+        <div class="err-msg" id="err-bas2">Gerekli</div>
+      </div>
+      <div class="field">
+        <label>Sayaç — Bitiş <span class="req">*</span></label>
+        <input type="number" id="sayac_bit2" placeholder="0"
+               style="font-size:20px;font-weight:800" oninput="calcUretim(2)">
+        <div class="err-msg" id="err-bit2">Gerekli</div>
+      </div>
+    </div>
+
+    <div class="result-box" id="uretim-box2">
+      <div class="result-label" id="result-label2">🏭 Toplam Üretim</div>
+      <div class="result-val"   id="result-val2">—</div>
+    </div>
+    <!-- Fire girişi — Enj 2 -->
+    <div class="field" style="margin-top:14px;background:var(--bg);padding:14px;border-radius:12px;border:2px solid var(--border)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <label style="margin:0">🔥 Bozuk / Fire Ürün Ekle</label>
+        <div id="fire-toplam-box2" style="display:none;font-size:12px;font-weight:800;color:var(--warn);background:#fef2f2;padding:4px 8px;border-radius:8px;border:1px solid #fecaca">
+          Bugünkü Toplam: <span id="fire-toplam2" style="font-size:14px">0</span>
+        </div>
+      </div>
+      <div class="counter" id="fire-counter2">
+        <button class="cbtn"
+          onmousedown="startFireAdj(2,-1)" onmouseup="stopFireAdj()" onmouseleave="stopFireAdj()"
+          ontouchstart="startFireAdj(2,-1);event.preventDefault()" ontouchend="stopFireAdj()" ontouchcancel="stopFireAdj()">−</button>
+        <input class="cval" type="number" id="fire2" value="0" min="0" inputmode="numeric" oninput="clampFire(2)">
+        <button class="cbtn"
+          onmousedown="startFireAdj(2,1)" onmouseup="stopFireAdj()" onmouseleave="stopFireAdj()"
+          ontouchstart="startFireAdj(2,1);event.preventDefault()" ontouchend="stopFireAdj()" ontouchcancel="stopFireAdj()">+</button>
+      </div>
+      <div class="err-msg" id="err-fire2" style="text-align:center;font-size:13px;margin-top:8px"></div>
+      <button class="btn btn-submit" id="btn-fire-ekle2" onclick="promptInstantFire(2)"
+              style="width:100%;margin-top:10px;padding:16px;font-size:17px;background:#ea580c;border:none">
+        ➕ Fire Ekle
+      </button>
+      <div class="ibox orange" id="fire-lock-msg2" style="display:none;margin-top:10px;margin-bottom:0">
+        🔒 Fire <span id="fire-lock-cd2">--:--</span> sonra eklenebilir
+      </div>
+      <div id="fire-history2" style="display:none;margin-top:14px;border-top:1px solid var(--border);padding-top:10px">
+        <div style="font-size:11px;font-weight:800;color:var(--text2);margin-bottom:6px">📋 BUGÜNKÜ GİRİŞLER</div>
+        <div id="fire-history-list2"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="nav-row">
+    <button class="btn btn-back" onclick="goStep(1)">← Geri</button>
+    <button class="btn btn-next" onclick="goNext(2)">Özeti Gör →</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     SAYFA 3 — Özet & Gönder
+══════════════════════════════════════════════════ -->
+<div class="page" id="page-3">
+
+  <!-- Normal özet (1. ve 2. ölçüm) -->
+  <div id="normal-ozet">
+    <div class="section">
+      <div class="stitle"><span>✅</span> Özet — Kontrol Et</div>
+      <div id="summary-body"></div>
+    </div>
+    <div class="nav-row">
+      <button class="btn btn-back"   onclick="goStep(2)">← Geri</button>
+      <button class="btn btn-submit" id="submit-btn" onclick="onGonderClick(false)">✅ Kaydet & Gönder</button>
+    </div>
+  </div>
+
+  <!-- Onay özeti (3. ölçüm — vardiya sonu) -->
+  <div id="onay-ozet" style="display:none">
+    <div class="onay-card">
+      <div class="onay-icon">🏁</div>
+      <div class="onay-title">Vardiya Tamamlanıyor</div>
+      <div class="onay-sub">Son ölçüm. Üretim bilgilerini onaylıyor musunuz?</div>
+      <div class="onay-stats">
+        <div class="ostat"><div class="ostat-val" id="onay-uretim1">—</div><div class="ostat-lbl">Enj1 Üretim</div></div>
+        <div class="ostat"><div class="ostat-val" id="onay-uretim2">—</div><div class="ostat-lbl">Enj2 Üretim</div></div>
+      </div>
+      <div id="onay-summary-body"></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <button class="btn btn-submit" id="onay-btn" onclick="onGonderClick(true)">✅ Onaylıyorum — Gönder</button>
+      <button class="btn" style="background:var(--border);color:var(--text2);padding:14px" onclick="goStep(2)">← Düzelt</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     MODALLER
+══════════════════════════════════════════════════ -->
+
+<!-- Personel Seçici -->
+<div class="modal-overlay" id="personel-picker-modal" style="display:none" onclick="if(event.target===this)closePersonelPicker()">
+  <div class="modal-box" style="max-width:380px;max-height:80vh;display:flex;flex-direction:column;padding:20px">
+    <div style="font-size:20px;font-weight:800;color:var(--text);margin-bottom:14px;text-align:center">👥 Personel Seçin</div>
+    <input type="text" id="personel-ara" placeholder="İsim ara..." oninput="filterPersonelPicker(this.value)"
+      style="margin-bottom:12px;padding:10px 14px;border:2px solid var(--border);border-radius:10px;font-size:15px;font-family:'Nunito',sans-serif;font-weight:600;width:100%;box-sizing:border-box">
+    <div id="personel-liste" style="overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:8px"></div>
+    <button onclick="closePersonelPicker()" style="margin-top:14px;padding:12px;border:2px solid var(--border);border-radius:10px;background:white;font-family:'Nunito',sans-serif;font-size:15px;font-weight:700;cursor:pointer;color:var(--text2)">İptal</button>
+  </div>
+</div>
+
+<!-- Fire onayı -->
+<div class="modal-overlay" id="fire-modal" style="display:none">
+  <div class="modal-box">
+    <div class="modal-icon" style="font-size:52px;margin-bottom:10px">🔥</div>
+    <div class="modal-title" style="color:#ea580c">Anında Fire Kaydı</div>
+    <div class="modal-body" id="fire-modal-body"></div>
+    <div class="modal-btns">
+      <button class="modal-btn-cancel"  onclick="closeFireModal()">İptal</button>
+      <button class="modal-btn-confirm" style="background:#ea580c;border:none" onclick="confirmInstantFire()">Evet, Kaydet</button>
+    </div>
+  </div>
+</div>
+
+<!-- Yükleniyor ekranı -->
+<div class="loading" id="loading">
+  <div class="spinner"></div>
+  <span id="load-text">Kaydediliyor...</span>
+</div>
+
+<!-- Toast bildirimi -->
+<div class="toast" id="toast"></div>
+
+<!-- ══════════════════════════════════════════════════
+     JAVASCRIPT — yükleme sırası önemli
+══════════════════════════════════════════════════ -->
+<script src="js/config.js"></script>
+<script src="js/state.js"></script>
+<script src="js/vardiya.js"></script>
+<script src="js/fire.js"></script>
+<script src="js/draft.js"></script>
+<script src="js/api.js"></script>
+<script src="js/form.js"></script>
+<script src="js/app.js"></script>
+<script src="js/atama-kontrol.js"></script>
+
+</body>
+</html>
