@@ -220,51 +220,70 @@ function getStatus(cb, e) {
 // ================================================================
 
 function getLastCounter(cb, e) {
-  const enjNo = e.parameter.enj_no;
+  const enjNo = String(e.parameter.enj_no || '').trim();
   const ss    = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName('Veriler');
 
-  let sayacBit  = null;
-  let lastTime  = 0;   // En son Veriler kaydının zamanı (bu makine için)
-
-  if (sheet && sheet.getLastRow() >= 2) {
-    const vals = sheet.getRange(2, 1, sheet.getLastRow() - 1, 24).getValues();
-    for (const row of vals) {
-      const ts = row[0] instanceof Date ? row[0].getTime() : 0;
-      if (String(row[7]).trim() === String(enjNo).trim()) {
-        const b = parseInt(row[12]);
-        if (!isNaN(b)) { sayacBit = b; if (ts > lastTime) lastTime = ts; }
-      }
-      if (String(row[15]).trim() === String(enjNo).trim()) {
-        const b = parseInt(row[20]);
-        if (!isNaN(b)) { sayacBit = b; if (ts > lastTime) lastTime = ts; }
-      }
-    }
-  }
-
-  // Daha yeni bir sayaç sıfırlama kaydı varsa onu kullan
-  const logSheet = ss.getSheetByName('SayacLogları');
-  if (logSheet && logSheet.getLastRow() > 1) {
-    const logVals = logSheet.getRange(2, 1, logSheet.getLastRow() - 1, 3).getValues();
-    for (const row of logVals) {
-      if (String(row[1]).trim() !== String(enjNo).trim()) continue;
-      const ts = row[0] instanceof Date ? row[0].getTime() : 0;
-      if (ts > lastTime) {
-        lastTime = ts;
-        sayacBit = parseInt(row[2]) || 0;
-      }
-    }
-  }
-
+  let sayacBit   = null;
   let kasaAtanan = null;
+
+  // ── Hızlı yol: Son Sayaçlar lookup tablosu ──────────────────────
+  // submitForm ve resetSayac her yazımda bu tabloyu günceller.
+  // 13 satırlık tabloda arama: anlık döner, tam Veriler taraması gerekmez.
+  const sonSheet = ss.getSheetByName('Son Sayaçlar');
+  if (sonSheet && sonSheet.getLastRow() > 1) {
+    const data = sonSheet.getRange(2, 1, sonSheet.getLastRow() - 1, 2).getValues();
+    for (const row of data) {
+      if (String(row[0]).trim() === enjNo) {
+        const bit = parseInt(row[1]);
+        if (!isNaN(bit)) sayacBit = bit;
+        break;
+      }
+    }
+  }
+
+  // ── Yedek yol: Son Sayaçlar'da yoksa Veriler'i tara ─────────────
+  // Yeni kurulumda veya makine henüz kayıt yapmamışsa devreye girer.
+  if (sayacBit === null) {
+    const vSheet = ss.getSheetByName('Veriler');
+    let lastVeriMs = 0;
+    if (vSheet && vSheet.getLastRow() >= 2) {
+      const vals = vSheet.getRange(2, 1, vSheet.getLastRow() - 1, 21).getValues();
+      for (let i = vals.length - 1; i >= 0; i--) {
+        const row = vals[i];
+        let bit = null;
+        if (String(row[7]).trim() === enjNo)       bit = parseInt(row[12]);
+        else if (String(row[15]).trim() === enjNo) bit = parseInt(row[20]);
+        else continue;
+        if (isNaN(bit)) continue;
+        sayacBit = bit;
+        const raw = row[0];
+        if (raw instanceof Date) {
+          lastVeriMs = raw.getTime();
+        } else {
+          const m = String(raw).match(/(\d{1,2})[.\-\/](\d{1,2})[.\-\/](\d{4})\D+(\d{1,2}):(\d{2})/);
+          if (m) lastVeriMs = new Date(+m[3], +m[2] - 1, +m[1], +m[4], +m[5]).getTime();
+        }
+        break;
+      }
+    }
+    // Veriler'den sonra yapılmış sıfırlama varsa onu kullan
+    const logSheet = ss.getSheetByName('SayacLogları');
+    if (logSheet && logSheet.getLastRow() > 1) {
+      const logVals = logSheet.getRange(2, 1, logSheet.getLastRow() - 1, 3).getValues();
+      for (const row of logVals) {
+        if (String(row[1]).trim() !== enjNo) continue;
+        const ts = row[0] instanceof Date ? row[0].getTime() : 0;
+        if (ts > lastVeriMs) { lastVeriMs = ts; sayacBit = parseInt(row[2]) || 0; }
+      }
+    }
+  }
+
+  // ── Makine kasası (küçük tablo, direkt arama) ────────────────────
   const kasaSheet = ss.getSheetByName('Makine Kasa');
   if (kasaSheet && kasaSheet.getLastRow() > 1) {
     const kv = kasaSheet.getRange(2, 1, kasaSheet.getLastRow() - 1, 2).getValues();
     for (const row of kv) {
-      if (String(row[0]).trim() === String(enjNo).trim()) {
-        kasaAtanan = String(row[1]).trim() || null;
-        break;
-      }
+      if (String(row[0]).trim() === enjNo) { kasaAtanan = String(row[1]).trim() || null; break; }
     }
   }
 
@@ -294,6 +313,9 @@ function resetSayac(cb, e) {
   }
 
   sheet.appendRow([new Date(), makineNo, yeniSayac, meydanciId, meydanciAd]);
+
+  // Lookup tablosunu güncelle — bir sonraki getLastCounter anında dönsün
+  _updateSonSayaclar(ss, makineNo, yeniSayac);
 
   return jsonp(cb, { result: 'ok', makineNo, yeniSayac });
 }
@@ -394,8 +416,6 @@ function submitForm(cb, e) {
   const saat        = e.parameter.olcum_saat  || '';
   const vardiya     = e.parameter.vardiya     || '';
   const close       = e.parameter.close === 'true';
-  const olcumNo     = parseInt(e.parameter.olcumNo) || 1;
-  const onaylandi   = e.parameter.onaylandi === 'true';
   const adSoyad     = e.parameter.adsoyad || '';
   const submitToken = String(e.parameter.submitToken || '').trim();
 
@@ -408,7 +428,7 @@ function submitForm(cb, e) {
       const tokenCol   = sheet.getRange(checkStart, 25, lastRow - checkStart + 1, 1).getValues();
       for (let i = 0; i < tokenCol.length; i++) {
         if (String(tokenCol[i][0]).trim() === submitToken) {
-          return jsonp(cb, { result: 'ok', olcum: olcumNo, duplicate: true });
+          return jsonp(cb, { result: 'ok', duplicate: true });
         }
       }
     }
@@ -430,7 +450,7 @@ function submitForm(cb, e) {
     vardiyaTarih,
     adSoyad,
     vardiya,
-    olcumNo,
+    '',
     enjSayisi,
     saat,
     e.parameter.enj1_no    || '',
@@ -442,9 +462,15 @@ function submitForm(cb, e) {
     e.parameter.uretim1    || '',
     e.parameter.fire1      || '0',
     enj2No, kasa2, cevrim2, agirlik2, bas2, bit2, uretim2, fire2,
-    olcumNo === 3 ? (onaylandi ? 'ONAYLANDI' : 'BEKLİYOR') : '',
+    '',
     submitToken
   ]);
+
+  // Son Sayaçlar lookup tablosunu güncelle — getLastCounter hızlı yolu
+  _updateSonSayaclar(ss, e.parameter.enj1_no, parseInt(e.parameter.sayac_bit1) || 0);
+  if (enjSayisi === 2 && enj2No !== '00') {
+    _updateSonSayaclar(ss, enj2No, parseInt(bit2) || 0);
+  }
 
   // Canlı izleme güncelle
   updateCanliIzleme(
@@ -491,7 +517,7 @@ function submitForm(cb, e) {
 
   // Üretim kaydı
   appendUretimKaydi(ss, {
-    tarih: vardiyaTarih, vardiya, saat, adsoyad: adSoyad, olcumNo,
+    tarih: vardiyaTarih, vardiya, saat, adsoyad: adSoyad,
     makineNo: e.parameter.enj1_no || '', kasa: e.parameter.kasa1 || '',
     cevrim:   close ? '0' : (e.parameter.cevrim1 || ''),
     agirlik:  e.parameter.agirlik1 || '',
@@ -500,13 +526,13 @@ function submitForm(cb, e) {
   });
   if (enjSayisi === 2) {
     appendUretimKaydi(ss, {
-      tarih: vardiyaTarih, vardiya, saat, adsoyad: adSoyad, olcumNo,
+      tarih: vardiyaTarih, vardiya, saat, adsoyad: adSoyad,
       makineNo: enj2No, kasa: kasa2, cevrim: cevrim2, agirlik: agirlik2,
       sayacBas: bas2, sayacBit: bit2, uretim: uretim2, fire: fire2,
     });
   }
 
-  return jsonp(cb, { result: 'ok', olcum: olcumNo });
+  return jsonp(cb, { result: 'ok' });
 }
 
 // ================================================================
@@ -557,20 +583,31 @@ function getMonitorData(cb) {
   if (verilerSheet2 && verilerSheet2.getLastRow() > 1) {
     const lastRow  = verilerSheet2.getLastRow();
     const startRow = Math.max(2, lastRow - 499);
+    const tz2 = ss.getSpreadsheetTimeZone();
     const vv = verilerSheet2.getRange(startRow, 1, lastRow - startRow + 1, 24).getValues();
     for (const row of vv) {
       uretimGecmisi.push({
-        tarih:   String(row[1]  || '').trim(),
-        adsoyad: String(row[2]  || '').trim(),
-        vardiya: String(row[3]  || '').trim(),
-        enj1:    String(row[7]  || '').trim(),
-        kasa1:   String(row[8]  || '').trim(),
-        uretim1: Number(row[13]) || 0,
-        fire1:   Number(row[14]) || 0,
-        enj2:    String(row[15] || '').trim(),
-        kasa2:   String(row[16] || '').trim(),
-        uretim2: Number(row[21]) || 0,
-        fire2:   Number(row[22]) || 0,
+        tarih:    row[1] instanceof Date
+          ? Utilities.formatDate(row[1], tz2, 'yyyy-MM-dd')
+          : String(row[1] || '').trim(),
+        adsoyad:  String(row[2]  || '').trim(),
+        vardiya:  String(row[3]  || '').trim(),
+        olcumNo:  Number(row[4]) || 0,
+        saat:     String(row[6]  || '').trim(),
+        enj1:     String(row[7]  || '').trim(),
+        kasa1:    String(row[8]  || '').trim(),
+        cevrim1:  Number(row[9]) || 0,
+        sayacBas1: Number(row[11]) || 0,
+        sayacBit1: Number(row[12]) || 0,
+        uretim1:  Number(row[13]) || 0,
+        fire1:    Number(row[14]) || 0,
+        enj2:     String(row[15] || '').trim(),
+        kasa2:    String(row[16] || '').trim(),
+        cevrim2:  Number(row[17]) || 0,
+        sayacBas2: Number(row[19]) || 0,
+        sayacBit2: Number(row[20]) || 0,
+        uretim2:  Number(row[21]) || 0,
+        fire2:    Number(row[22]) || 0,
       });
     }
   }
@@ -1155,6 +1192,7 @@ function buildCanliData(ss) {
   const allCanli  = canliSheet.getRange(1, 1, readRows, 12).getValues();
   const _BASES    = { SABAH: 2, AKSAM: 16, GECE: 30 };
   const nowMs     = new Date().getTime();
+  const tz        = ss.getSpreadsheetTimeZone();
 
   for (let enjIdx = 1; enjIdx <= 13; enjIdx++) {
     const makineNo = 'Enjeksiyon ' + enjIdx;
@@ -1165,7 +1203,9 @@ function buildCanliData(ss) {
       const ri = base + enjIdx - 1;
       if (ri >= allCanli.length) continue;
       const row      = allCanli[ri];
-      const rowTarih = String(row[2] || '').trim();
+      const rowTarih = row[2] instanceof Date
+        ? Utilities.formatDate(row[2], tz, 'yyyy-MM-dd')
+        : String(row[2] || '').trim();
       const rowSaat  = String(row[10] || '').trim();
       if (!rowTarih) continue;
 
@@ -1210,6 +1250,7 @@ function buildCanliDataForMachineStatus(ss) {
   const allCanli = canliSheet.getRange(1, 1, readRows, 12).getValues();
   const _BASES   = { SABAH: 2, AKSAM: 16, GECE: 30 };
   const nowMs    = new Date().getTime();
+  const tz       = ss.getSpreadsheetTimeZone();
 
   for (let i = 1; i <= 13; i++) {
     const makineNo  = 'Enjeksiyon ' + i;
@@ -1220,7 +1261,9 @@ function buildCanliDataForMachineStatus(ss) {
       if (ri >= allCanli.length) continue;
       const row     = allCanli[ri];
       const opAd    = String(row[1] || '').trim();
-      const rowTarih = String(row[2] || '').trim();
+      const rowTarih = row[2] instanceof Date
+        ? Utilities.formatDate(row[2], tz, 'yyyy-MM-dd')
+        : String(row[2] || '').trim();
       const rowSaat  = String(row[10] || '').trim();
       if (!opAd || !rowTarih) continue;
 
@@ -1442,6 +1485,38 @@ function jsonp(callback, obj) {
   const body = callback ? callback + '(' + JSON.stringify(obj) + ')' : JSON.stringify(obj);
   return ContentService.createTextOutput(body)
     .setMimeType(callback ? ContentService.MimeType.JAVASCRIPT : ContentService.MimeType.JSON);
+}
+
+// ================================================================
+// HELPER: _updateSonSayaclar
+// Her makinenin son sayaçBit değerini küçük bir lookup tablosunda tutar.
+// submitForm ve resetSayac her yazımda bunu günceller.
+// getLastCounter bu tabloyu okur → tam Veriler taraması gerekmez.
+// ================================================================
+function _updateSonSayaclar(ss, enjNo, sayacBit) {
+  if (!enjNo || enjNo === '00') return;
+
+  let sheet = ss.getSheetByName('Son Sayaçlar');
+  if (!sheet) {
+    sheet = ss.insertSheet('Son Sayaçlar');
+    sheet.appendRow(['Makine No', 'Sayaç Bit', 'Son Güncelleme']);
+    sheet.getRange('A1:C1').setFontWeight('bold').setBackground('#0f766e').setFontColor('#ffffff');
+    sheet.setFrozenRows(1);
+    [100, 100, 160].forEach((w, i) => sheet.setColumnWidth(i + 1, w));
+  }
+
+  const lastRow = sheet.getLastRow();
+  if (lastRow > 1) {
+    const keys = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+    for (let i = 0; i < keys.length; i++) {
+      if (String(keys[i][0]).trim() === enjNo) {
+        sheet.getRange(i + 2, 2, 1, 2).setValues([[sayacBit, new Date()]]);
+        return;
+      }
+    }
+  }
+
+  sheet.appendRow([enjNo, sayacBit, new Date()]);
 }
 
 function getLockedMachines(ss) {
