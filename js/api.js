@@ -96,7 +96,6 @@ function fetchLastCounter(n, enjNo, _attempt) {
   var bas = document.getElementById('sayac_bas' + n);
 
   if (attempt === 1) {
-    bas.value = '';
     setBasEditable(n);
     calcUretim(n);
   }
@@ -124,7 +123,6 @@ function fetchLastCounter(n, enjNo, _attempt) {
     document.getElementById('lcs' + n)?.remove();
     if (json.sayacBit !== null && json.sayacBit !== undefined) {
       bas.value = json.sayacBit;
-      setBasReadonly(n);
       calcUretim(n);
     }
     if (json.kasaAtanan) {
@@ -155,8 +153,8 @@ function fetchLastCounter(n, enjNo, _attempt) {
 }
 
 /**
- * Operatörün bu vardiyada daha önce ölçüm yapıp yapmadığını sorgular.
- * Varsa enjeksiyon/kasa bilgisini kilitler ve sayaç başlangıcını doldurur.
+ * Bu vardiyada son kaydın sayaç bitiş değerini çekip
+ * yeni kaydın sayaç başlangıcını önceden doldurur.
  */
 function checkStatus() {
   var ad    = _adSoyad;
@@ -169,25 +167,8 @@ function checkStatus() {
     delete window[cb];
     document.getElementById('st-s')?.remove();
 
-    olcumNo     = json.olcumNo || 1;
-    enj1Kilitli = olcumNo > 1 && !!json.enj1;
-    enj2Kilitli = olcumNo > 1 && !!json.enj2 && json.enj2 !== '00';
-
-    if (enj1Kilitli) {
-      enjSayisi = json.enjSayisi || 1;
-      setEnjSayisi(enjSayisi);
-    }
+    olcumNo = json.olcumNo || 1;
     showStatusBox(json);
-    showEnjSection(json);
-
-    if (enj1Kilitli && json.sayacBit1 != null) {
-      document.getElementById('sayac_bas1').value = json.sayacBit1;
-      setBasReadonly(1); calcUretim(1);
-    }
-    if (enj2Kilitli && json.sayacBit2 != null) {
-      document.getElementById('sayac_bas2').value = json.sayacBit2;
-      setBasReadonly(2); calcUretim(2);
-    }
   };
 
   var s = document.createElement('script');
@@ -207,24 +188,21 @@ function checkStatus() {
  * Doldurulmuş formu Google Sheets'e kaydeder.
  * JSONP GET ile iletişim kurulur (CORS sorunu olmaz).
  */
-function submitForm(onaylandi, _retryCount) {
+function submitForm(_retryCount) {
   _retryCount = _retryCount || 0;
-  // Token'ı bir kez üret; hata/timeout retry'larında aynı token kullanılır.
-  // Böylece sunucu duplicate detection ile çift kayıt önlenir.
   if (!_pendingToken) _pendingToken = _genToken();
 
   var sb = document.getElementById('submit-btn');
-  var ob = document.getElementById('onay-btn');
-  document.getElementById('load-text').textContent = _retryCount > 0 ? 'Tekrar deneniyor...' : 'Kaydediliyor...';
-  document.getElementById('loading').classList.add('show');
-  if (sb) sb.disabled = true;
-  if (ob) ob.disabled = true;
 
-  // Önceki JSONP script varsa temizle (timeout sonrası retry durumu)
-  document.getElementById('jsonp-submit')?.remove();
+  // UI sadece ilk denemede kurulur; retry'larda sessizce çalışır
+  if (_retryCount === 0) {
+    document.getElementById('load-text').textContent = 'Kaydediliyor...';
+    document.getElementById('loading').classList.add('show');
+    if (sb) sb.disabled = true;
+    document.getElementById('jsonp-submit')?.remove();
+  }
 
   var data = getData();
-  data.onaylandi = onaylandi;
 
   return new Promise(function(resolve) {
     var cb       = 'cbSubmit_' + Date.now();
@@ -232,18 +210,14 @@ function submitForm(onaylandi, _retryCount) {
       delete window[cb];
       document.getElementById('jsonp-submit')?.remove();
       if (_retryCount < 2) {
-        document.getElementById('load-text').textContent = 'Bağlanıyor...';
-        setTimeout(function() {
-          submitForm(onaylandi, _retryCount + 1).then(resolve);
-        }, 4000 * (_retryCount + 1));
+        setTimeout(function() { submitForm(_retryCount + 1).then(resolve); }, 2000);
       } else {
         document.getElementById('loading').classList.remove('show');
         if (sb) sb.disabled = false;
-        if (ob) ob.disabled = false;
         showToast('❌ Bağlantı zaman aşımı, tekrar dene', 'err');
         resolve();
       }
-    }, 15000);
+    }, 12000);
 
     window[cb] = function(json) {
       clearTimeout(timerOut);
@@ -252,26 +226,17 @@ function submitForm(onaylandi, _retryCount) {
 
       if (json && json.result === 'ok') {
         _pendingToken = null;
-        if (olcumNo === 3 && onaylandi && !json.duplicate) clearFireLogs();
         clearDraft();
         document.getElementById('loading').classList.remove('show');
-        if (json.duplicate) {
-          showToast('✅ Kayıt zaten tamamlanmıştı', 'ok');
-        } else {
-          var msgs = { 1: '✅ Ölçümünüz kaydedildi! İyi Günler', 2: '✅ 2. ölçüm kaydedildi!', 3: '✅ Vardiya tamamlandı!' };
-          showToast(msgs[olcumNo] || '✅ Kaydedildi!', 'ok');
-        }
+        showToast('✅ Kaydedildi!', 'ok');
         setTimeout(resetForm, 2200);
       } else if (_retryCount < 2) {
-        document.getElementById('load-text').textContent = 'Tekrar deneniyor...';
-        setTimeout(function() {
-          submitForm(onaylandi, _retryCount + 1).then(resolve);
-        }, 4000 * (_retryCount + 1));
+        // Sessiz retry — kullanıcıya hiçbir şey gösterilmez
+        setTimeout(function() { submitForm(_retryCount + 1).then(resolve); }, 2000);
         return;
       } else {
         document.getElementById('loading').classList.remove('show');
         if (sb) sb.disabled = false;
-        if (ob) ob.disabled = false;
         showToast('❌ Kayıt hatası, tekrar dene', 'err');
         console.error('submitForm hatası:', json);
       }
@@ -283,7 +248,6 @@ function submitForm(onaylandi, _retryCount) {
       callback:   cb,
       adsoyad:    data.adsoyad    || '',
       vardiya:    data.vardiya    || '',
-      olcumNo:    data.olcumNo   || 1,
       enjSayisi:  data.enjSayisi || 1,
       tarih:      data.tarih     || '',
       olcum_saat: data.olcum_saat || '',
@@ -303,7 +267,6 @@ function submitForm(onaylandi, _retryCount) {
       sayac_bit2: data.sayac_bit2 || '00',
       uretim2:    data.uretim2   || 0,
       fire2:      data.fire2     || '00',
-      onaylandi:  onaylandi ? 'true' : 'false',
       submitToken: _pendingToken,
     });
 
@@ -315,14 +278,10 @@ function submitForm(onaylandi, _retryCount) {
       delete window[cb];
       document.getElementById('jsonp-submit')?.remove();
       if (_retryCount < 2) {
-        document.getElementById('load-text').textContent = 'Tekrar deneniyor...';
-        setTimeout(function() {
-          submitForm(onaylandi, _retryCount + 1).then(resolve);
-        }, 4000 * (_retryCount + 1));
+        setTimeout(function() { submitForm(_retryCount + 1).then(resolve); }, 2000);
       } else {
         document.getElementById('loading').classList.remove('show');
         if (sb) sb.disabled = false;
-        if (ob) ob.disabled = false;
         showToast('❌ Bağlantı hatası, tekrar dene', 'err');
         resolve();
       }
